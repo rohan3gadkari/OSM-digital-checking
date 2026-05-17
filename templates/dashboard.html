@@ -1,233 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced On-Screen Evaluation System</title>
-    <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; user-select: none; }
-        
-        /* 🔝 Top Header Bar */
-        .header-bar { background-color: #1a252f; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); height: 25px; }
-        .header-bar h2 { margin: 0; font-size: 18px; letter-spacing: 0.5px; }
-        .user-info { font-size: 14px; color: #bdc3c7; }
-        .user-info a { color: #e74c3c; text-decoration: none; font-weight: bold; margin-left: 10px; border: 1px solid #e74c3c; padding: 3px 8px; border-radius: 4px; }
+<h4 style="margin: 10px 0 2px 0; color: #1e293b;">📋 Evaluation Matrix</h4>
+<div class="info-tip">💡 Click a data cell entry field, then use the keypad on the left to enter grades.</div>
 
-        .container { display: flex; height: calc(100vh - 45px); position: relative; }
+<form id="marksForm" style="margin-top: 8px;">
+    <table class="marks-table">
+        <thead>
+            <tr>
+                <th>Q.No</th>
+                <th>Max</th>
+                <th>Score Given</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for q in structure %}
+            <tr id="row-{{ q.id }}">
+                <td><strong>{{ q.label }}</strong></td>
+                <td>{{ q.max }}</td>
+                <td>
+                    <input type="number" 
+                           id="{{ q.id }}" 
+                           class="mark-input"
+                           min="0" 
+                           max="{{ q.max }}" 
+                           value="0" 
+                           onfocus="setActiveQuestion('{{ q.id }}')" 
+                           oninput="calculateLiveTotal()">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</form>
 
-        /* 🖌️ Left Toolbar (Marks Keypad) */
-        .toolbar { width: 65px; background-color: #2c3e50; display: flex; flex-direction: column; align-items: center; padding-top: 15px; gap: 10px; border-right: 1px solid #34495e; z-index: 10; position: relative; overflow-y: auto; }
-        .toolbar-label { color: #bdc3c7; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 5px; margin-bottom: 2px; }
-        
-        .tool-btn { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; background-color: #ecf0f1; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-weight: bold; }
-        .tool-btn:hover { transform: scale(1.1); }
-        
-        .tool-num { background-color: #34495e; color: #f1c40f; font-size: 18px; border: 1px solid #f1c40f; }
-        .tool-num:hover { background-color: #f1c40f; color: #34495e; }
-        .tool-clear { background-color: #95a5a6; color: white; font-size: 11px; font-weight: bold; border-radius: 6px; height: 30px; width: 45px; }
-
-        /* 📄 Middle PDF Panel (Clean White Background) */
-        .pdf-panel { flex: 1; background-color: #ffffff; position: relative; display: flex; flex-direction: column; z-index: 1; }
-        .paper-bar { background-color: #34495e; color: white; padding: 6px; text-align: center; font-weight: bold; font-size: 14px; }
-        
-        /* Fixed: Canvas container is now clean white to avoid dark screen blocks */
-        .canvas-container { flex: 1; position: relative; background-color: #ffffff; width: 100%; height: 100%; }
-        iframe { width: 100%; height: 100%; border: none; background-color: #ffffff; display: block; }
-
-        /* 📊 Right Marking Matrix Panel */
-        .marks-panel { width: 320px; background-color: #ffffff; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 5; }
-        
-        .upload-section { background-color: #f8f9fa; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; }
-        .upload-section h4 { margin: 0 0 6px 0; color: #2c3e50; font-size: 13px; }
-        .btn-upload { background-color: #34495e; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; margin-top: 5px; width: 100%; }
-        
-        .marks-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        .marks-table th, .marks-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 14px; }
-        .marks-table th { background-color: #f1f5f9; color: #334155; }
-        
-        .marks-table input[type="number"] { width: 55px; padding: 5px; text-align: center; border: 2px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: bold; transition: 0.3s; }
-        .marks-table input[type="number"]:focus { border-color: #3498db; background-color: #ebf5fb; outline: none; }
-        .active-input-row { background-color: #fef9e7 !important; }
-
-        .total-box { background-color: #ecfdf5; padding: 12px; border: 1px solid #a7f3d0; border-radius: 6px; text-align: center; margin-bottom: 10px; }
-        .total-box h3 { margin: 0; color: #065f46; font-size: 18px; }
-        
-        .btn-submit { width: 100%; padding: 12px; background-color: #10b981; color: white; border: none; font-size: 15px; cursor: pointer; border-radius: 6px; font-weight: bold; margin-bottom: 8px; }
-        .btn-submit:hover { background-color: #059669; }
-        
-        .nav-buttons { display: flex; gap: 8px; }
-        .btn-nav { flex: 1; padding: 8px; background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: bold; cursor: pointer; border-radius: 6px; font-size: 13px; text-align: center; text-decoration: none; }
-        
-        #msg, #uploadMsg { text-align: center; font-weight: bold; margin-top: 5px; display: none; padding: 6px; border-radius: 4px; font-size: 13px; }
-        .success { background-color: #d1fae5; color: #065f46; }
-        
-        .info-tip { font-size: 11px; color: #7f8c8d; text-align: center; margin-top: 4px; font-style: italic; }
-    </style>
-</head>
-<body>
-
-<div class="header-bar">
-    <h2>On-Screen Marking (OSM) Platform</h2>
-    <div class="user-info">
-        👤 Evaluator: <strong>{{ user }}</strong> <a href="/logout">Logout</a>
+<div>
+    <div class="total-box">
+        <h3>Total Score: <span id="liveTotal">0</span> / {{ total_max }}</h3>
     </div>
+    <button type="button" class="btn-submit" onclick="submitMarksViaAJAX()">Finish & Save Score</button>
+    <div class="nav-buttons">
+        <button class="btn-nav" onclick="navigatePaper('prev')">⬅️ Prev Paper</button>
+        <button class="btn-nav" onclick="navigatePaper('next')">Next Paper ➡️</button>
+    </div>
+    <div id="msg"></div>
 </div>
-
-<div class="container">
-    
-    <div class="toolbar">
-        <span class="toolbar-label">Marks</span>
-        <button class="tool-btn tool-num" onclick="enterMark('0')">0</button>
-        <button class="tool-btn tool-num" onclick="enterMark('1')">1</button>
-        <button class="tool-btn tool-num" onclick="enterMark('2')">2</button>
-        <button class="tool-btn tool-num" onclick="enterMark('3')">3</button>
-        <button class="tool-btn tool-num" onclick="enterMark('4')">4</button>
-        <button class="tool-btn tool-num" onclick="enterMark('5')">5</button>
-        
-        <span class="toolbar-label">Action</span>
-        <button class="tool-btn tool-clear" onclick="resetAllMarks()" title="Reset All Marks">Reset</button>
-    </div>
-
-    <div class="pdf-panel">
-        <div class="paper-bar">📄 Active Answer Sheet: <span id="paperName">{{ current_paper }}</span></div>
-        <div class="canvas-container">
-            <iframe id="pdfFrame" src="/static/answer_sheets/{{ current_paper }}"></iframe>
-        </div>
-    </div>
-
-    <div class="marks-panel">
-        <div>
-            <div class="upload-section">
-                <h4>📁 Upload Answer Sheet (.pdf)</h4>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <input type="file" id="pdfFile" name="file" accept=".pdf" required>
-                    <button type="button" class="btn-upload" onclick="uploadPDFViaAJAX()">Upload PDF</button>
-                </form>
-                <div id="uploadMsg"></div>
-            </div>
-
-            <h4 style="margin: 10px 0 2px 0; color: #1e293b;">📋 Evaluation Matrix</h4>
-            <div class="info-tip">💡 Click a question input box first, then tap a mark on the left!</div>
-            
-            <form id="marksForm" style="margin-top: 8px;">
-                <table class="marks-table">
-                    <thead>
-                        <tr>
-                            <th>Q.No</th>
-                            <th>Max</th>
-                            <th>Score Given</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr id="row-q1"><td><strong>Q1</strong></td><td>5</td><td><input type="number" id="q1" min="0" max="5" value="0" onfocus="setActiveQuestion('q1')" oninput="calculateLiveTotal()"></td></tr>
-                        <tr id="row-q2"><td><strong>Q2</strong></td><td>5</td><td><input type="number" id="q2" min="0" max="5" value="0" onfocus="setActiveQuestion('q2')" oninput="calculateLiveTotal()"></td></tr>
-                        <tr id="row-q3"><td><strong>Q3</strong></td><td>5</td><td><input type="number" id="q3" min="0" max="5" value="0" onfocus="setActiveQuestion('q3')" oninput="calculateLiveTotal()"></td></tr>
-                        <tr id="row-q4"><td><strong>Q4</strong></td><td>5</td><td><input type="number" id="q4" min="0" max="5" value="0" onfocus="setActiveQuestion('q4')" oninput="calculateLiveTotal()"></td></tr>
-                    </tbody>
-                </table>
-            </form>
-        </div>
-
-        <div>
-            <div class="total-box">
-                <h3>Total Score: <span id="liveTotal">0</span> / 20</h3>
-            </div>
-            <button type="button" class="btn-submit" onclick="submitMarksViaAJAX()">Finish & Save Score</button>
-            <div class="nav-buttons">
-                <button class="btn-nav" onclick="navigatePaper('prev')">⬅️ Prev Paper</button>
-                <button class="btn-nav" onclick="navigatePaper('next')">Next Paper ➡️</button>
-            </div>
-            <div id="msg"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-    let activeQuestionId = 'q1';
-
-    function setActiveQuestion(qId) {
-        activeQuestionId = qId;
-        document.querySelectorAll('.marks-table tbody tr').forEach(tr => tr.classList.remove('active-input-row'));
-        document.getElementById('row-' + qId).classList.add('active-input-row');
-    }
-
-    // Default selection to Q1 on page load
-    document.getElementById('q1').focus();
-    setActiveQuestion('q1');
-
-    // Inserts the numerical score and auto-advances focus to the next question row
-    function enterMark(num) {
-        if (activeQuestionId) {
-            let targetInput = document.getElementById(activeQuestionId);
-            targetInput.value = num;
-            calculateLiveTotal();
-            
-            // Automatic smart workflow advancement
-            if(activeQuestionId === 'q1') { document.getElementById('q2').focus(); }
-            else if(activeQuestionId === 'q2') { document.getElementById('q3').focus(); }
-            else if(activeQuestionId === 'q3') { document.getElementById('q4').focus(); }
-        }
-    }
-
-    function resetAllMarks() {
-        document.getElementById('q1').value = 0;
-        document.getElementById('q2').value = 0;
-        document.getElementById('q3').value = 0;
-        document.getElementById('q4').value = 0;
-        calculateLiveTotal();
-        document.getElementById('q1').focus();
-    }
-
-    function calculateLiveTotal() {
-        let q1 = parseInt(document.getElementById('q1').value) || 0;
-        let q2 = parseInt(document.getElementById('q2').value) || 0;
-        let q3 = parseInt(document.getElementById('q3').value) || 0;
-        let q4 = parseInt(document.getElementById('q4').value) || 0;
-        document.getElementById('liveTotal').innerText = q1 + q2 + q3 + q4;
-    }
-
-    function uploadPDFViaAJAX() {
-        let fileInput = document.getElementById('pdfFile');
-        let msgDiv = document.getElementById('uploadMsg');
-        if (fileInput.files.length === 0) { alert("Please select a file first!"); return; }
-        
-        let formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-        msgDiv.style.display = 'block'; msgDiv.innerText = "Uploading file...";
-
-        fetch('/upload_paper', { method: 'POST', body: formData })
-        .then(res => res.json()).then(data => {
-            if (data.status === 'success') {
-                msgDiv.innerHTML = "✔️ Upload successful!";
-                setTimeout(() => { window.location.href = "/?paper=" + data.filename; }, 1500);
-            }
-        });
-    }
-
-    function submitMarksViaAJAX() {
-        let dataToSend = {
-            paper_file: document.getElementById('paperName').innerText,
-            q1: document.getElementById('q1').value || 0, q2: document.getElementById('q2').value || 0,
-            q3: document.getElementById('q3').value || 0, q4: document.getElementById('q4').value || 0
-        };
-        fetch('/submit_marks', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend)
-        })
-        .then(res => res.json()).then(data => {
-            if(data.status === 'success') {
-                let msgDiv = document.getElementById('msg');
-                msgDiv.className = "success"; msgDiv.innerHTML = "✔️ Scores saved successfully!";
-                msgDiv.style.display = 'block';
-                setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
-            }
-        });
-    }
-
-    function navigatePaper(direction) {
-        let currentPaper = document.getElementById('paperName').innerText;
-        window.location.href = `/navigate?current=${currentPaper}&direction=${direction}`;
-    }
-</script>
-
-</body>
-</html>
