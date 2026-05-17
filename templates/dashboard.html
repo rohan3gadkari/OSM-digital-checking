@@ -30,12 +30,19 @@
         .tool-clear { background-color: #95a5a6; color: white; font-size: 11px; font-weight: bold; border-radius: 6px; height: 30px; }
 
         /* 📄 मधला PDF आणि ड्रॉइंग पॅनल */
-        .pdf-panel { flex: 1; background-color: #7f8c8d; position: relative; display: flex; flex-direction: column; z-index: 1; }
+        .pdf-panel { flex: 1; background-color: #525659; position: relative; display: flex; flex-direction: column; z-index: 1; }
         .paper-bar { background-color: #34495e; color: white; padding: 6px; text-align: center; font-weight: bold; font-size: 14px; }
         
-        .canvas-container { flex: 1; position: relative; overflow: auto; display: flex; justify-content: center; background-color: #525659; }
-        iframe { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
-        canvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: crosshair; }
+        /* 🔥 कॅनव्हास कंटेनर स्क्रोलिंग फिक्स */
+        .canvas-container { flex: 1; position: relative; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 10px; }
+        
+        /* 🛠️ PDF आणि Canvas एकमेकांच्या वर परफेक्ट बसवण्यासाठी फ्रेमवर्क */
+        .wrapper-evaluation { position: relative; width: 100%; max-width: 850px; height: 1200px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background: white; }
+        
+        iframe { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* 🎯 कॅनव्हास पूर्णपणे ट्रान्सपरंट आणि क्लिक-योग्य केला */
+        canvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: crosshair; background: transparent !important; width: 100%; height: 100%; }
 
         /* 📊 उजवा मार्किंग पॅनल */
         .marks-panel { width: 320px; background-color: #ffffff; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 5; }
@@ -47,7 +54,6 @@
         .marks-table th, .marks-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 14px; }
         .marks-table th { background-color: #f1f5f9; color: #334155; }
         
-        /* 🎯 फोकस केलेल्या इनपुटचा रंग बदलण्यासाठी */
         .marks-table input[type="number"] { width: 55px; padding: 5px; text-align: center; border: 2px solid #cbd5e1; border-radius: 4px; font-size: 14px; font-weight: bold; transition: 0.3s; }
         .marks-table input[type="number"]:focus { border-color: #3498db; background-color: #ebf5fb; outline: none; }
         .active-input-row { background-color: #fef9e7 !important; }
@@ -97,9 +103,11 @@
 
     <div class="pdf-panel">
         <div class="paper-bar">📄 Active Answer Sheet: <span id="paperName">{{ current_paper }}</span></div>
-        <div class="canvas-container" id="canvasContainer">
-            <iframe id="pdfFrame" src="{{ url_for('static', filename='answer_sheets/' + current_paper) }}"></iframe>
-            <canvas id="paintCanvas"></canvas>
+        <div class="canvas-container">
+            <div class="wrapper-evaluation" id="evaluationWrapper">
+                <iframe id="pdfFrame" src="{{ url_for('static', filename='answer_sheets/' + current_paper) }}#toolbar=0&navpanes=0"></iframe>
+                <canvas id="paintCanvas"></canvas>
+            </div>
         </div>
     </div>
 
@@ -153,16 +161,20 @@
 <script>
     const canvas = document.getElementById('paintCanvas');
     const ctx = canvas.getContext('2d');
-    const container = document.getElementById('canvasContainer');
+    const wrapper = document.getElementById('evaluationWrapper');
     let currentTool = '✔️';
-    let activeQuestionId = 'q1'; // बाय डिफॉल्ट Q1 सिलेक्ट राहील
+    let activeQuestionId = 'q1';
 
+    // 🎯 अचूक साईझिंग मॅपिंग फिक्स
     function resizeCanvas() {
-        canvas.width = container.scrollWidth || container.clientWidth;
-        canvas.height = 1200; 
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+        // डिझाईन रिपेअर झाल्यावर बॅकग्राउंड ट्रान्सपरंट ठेवणे
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     window.addEventListener('load', resizeCanvas);
-    setTimeout(resizeCanvas, 1000);
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 1200); // सेफ लोडिंग टाइमर
 
     function setTool(tool, element) {
         currentTool = tool;
@@ -170,20 +182,17 @@
         element.classList.add('active-tool');
     }
 
-    // कोणता प्रश्न सध्या चेक चालू आहे ते ठरवणे
     function setActiveQuestion(qId) {
         activeQuestionId = qId;
-        // सर्व रोचा बॅकग्राउंड नॉर्मल करणे
         document.querySelectorAll('.marks-table tbody tr').forEach(tr => tr.classList.remove('active-input-row'));
-        // सिलेक्ट केलेल्या प्रश्नाच्या रो चा रंग हायलाईट करणे
         document.getElementById('row-' + qId).classList.add('active-input-row');
     }
 
-    // सुरुवातीला Q1 हायलाईट करणे
+    // बाय डिफॉल्ट Q1 एक्टिव्ह ठेवणे
     document.getElementById('q1').focus();
     setActiveQuestion('q1');
 
-    // 🎯 मुख्य मॅपिंग लॉजिक: क्लिक केल्यावर स्टॅम्प उमटणार + टेबल अपडेट होणार
+    // क्लिकवर मार्क्स स्टॅम्प मारणे
     canvas.addEventListener('click', function(event) {
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
@@ -198,25 +207,21 @@
             ctx.fillStyle = "#e74c3c";
             ctx.fillText("❌", x - 12, y + 10);
         } else {
-            // जर ० ते ५ पैकी कोणताही नंबर स्टॅम्प मारला
-            ctx.font = "bold 26px Arial";
+            ctx.font = "bold 24px Arial";
             ctx.fillStyle = "#e74c3c";
             
-            // गोलाकार वर्तुळ
             ctx.beginPath();
             ctx.arc(x, y, 18, 0, 2 * Math.PI);
             ctx.strokeStyle = "#e74c3c";
             ctx.lineWidth = 3;
             ctx.stroke();
             
-            // नंबर ड्रॉ करणे
-            ctx.fillText(currentTool, x - 8, y + 8);
+            ctx.fillText(currentTool, x - 7, y + 8);
 
-            // 🔥 मॅजिक ट्रिक: उजव्या बाजूच्या सिलेक्टेड इनपुट बॉक्समध्ये हा आकडा आपोआप भरणे!
             if (activeQuestionId) {
                 let targetInput = document.getElementById(activeQuestionId);
                 targetInput.value = currentTool;
-                calculateLiveTotal(); // बेरीज ऑटो-रिफ्रेश करणे
+                calculateLiveTotal();
             }
         }
     });
@@ -229,57 +234,3 @@
         document.getElementById('q4').value = 0;
         calculateLiveTotal();
     }
-
-    function calculateLiveTotal() {
-        let q1 = parseInt(document.getElementById('q1').value) || 0;
-        let q2 = parseInt(document.getElementById('q2').value) || 0;
-        let q3 = parseInt(document.getElementById('q3').value) || 0;
-        let q4 = parseInt(document.getElementById('q4').value) || 0;
-        document.getElementById('liveTotal').innerText = q1 + q2 + q3 + q4;
-    }
-
-    function uploadPDFViaAJAX() {
-        let fileInput = document.getElementById('pdfFile');
-        let msgDiv = document.getElementById('uploadMsg');
-        if (fileInput.files.length === 0) { alert("आधी फाईल निवडा!"); return; }
-        
-        let formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-        msgDiv.style.display = 'block'; msgDiv.innerText = "अपलोड होत आहे...";
-
-        fetch('/upload_paper', { method: 'POST', body: formData })
-        .then(res => res.json()).then(data => {
-            if (data.status === 'success') {
-                msgDiv.innerHTML = "✔️ यशस्वी अपलोड!";
-                setTimeout(() => { window.location.href = "/?paper=" + data.filename; }, 1500);
-            }
-        });
-    }
-
-    function submitMarksViaAJAX() {
-        let dataToSend = {
-            paper_file: document.getElementById('paperName').innerText,
-            q1: document.getElementById('q1').value || 0, q2: document.getElementById('q2').value || 0,
-            q3: document.getElementById('q3').value || 0, q4: document.getElementById('q4').value || 0
-        };
-        fetch('/submit_marks', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend)
-        })
-        .then(res => res.json()).then(data => {
-            if(data.status === 'success') {
-                let msgDiv = document.getElementById('msg');
-                msgDiv.className = "success"; msgDiv.innerHTML = "✔️ गुण सुरक्षित सेव्ह झाले!";
-                msgDiv.style.display = 'block';
-                setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
-            }
-        });
-    }
-
-    function navigatePaper(direction) {
-        let currentPaper = document.getElementById('paperName').innerText;
-        window.location.href = `/navigate?current=${currentPaper}&direction=${direction}`;
-    }
-</script>
-
-</body>
-</html>
