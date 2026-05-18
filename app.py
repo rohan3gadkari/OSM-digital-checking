@@ -1,61 +1,41 @@
-import os
 from flask import Flask, render_template, request, jsonify
+import csv
+import os
 
 app = Flask(__name__)
 
-# PDF फाईल्स सेव्ह करण्यासाठी फोल्डर
-UPLOAD_FOLDER = os.path.join('static', 'answer_sheets')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Excel (CSV) फाईलचा पाथ सेट करणे
+DATABASE_FILE = 'marks_database.csv'
+
+# जर फाईल आधीपासून नसेल, तर हेडर तयार करणे
+if not os.path.exists(DATABASE_FILE):
+    with open(DATABASE_FILE, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Paper File', 'Question 1', 'Question 2', 'Total Marks'])
 
 @app.route('/')
 def dashboard():
-    # 📊 तुमच्या गरजेनुसार 'sample.pdf' साठी Q.1 a ते Q.5 सेट केले आहे
-    paper_structures = {
-        "sample.pdf": [
-            {"id": "q1a", "label": "Q.1 a", "max": 5},
-            {"id": "q2",  "label": "Q.2",   "max": 5},
-            {"id": "q3",  "label": "Q.3",   "max": 5},
-            {"id": "q4",  "label": "Q.4",   "max": 5},
-            {"id": "q5",  "label": "Q.5",   "max": 5}
-        ]
-    }
-
-    current_paper = request.args.get('paper', 'sample.pdf')
-    active_structure = paper_structures.get(current_paper, [
-        {"id": "q1", "label": "Q1", "max": 5},
-        {"id": "q2", "label": "Q2", "max": 5},
-        {"id": "q3", "label": "Q3", "max": 5},
-        {"id": "q4", "label": "Q4", "max": 5}
-    ])
-
-    total_max_marks = sum(q['max'] for q in active_structure)
-
-    return render_template('dashboard.html', 
-                           user="Prof. Gadkari", 
-                           current_paper=current_paper, 
-                           structure=active_structure,
-                           total_max=total_max_marks)
-
-@app.route('/upload_paper', methods=['POST'])
-def upload_paper():
-    if 'file' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No file found'}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
-
-    if file and file.filename.endswith('.pdf'):
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(file_path)
-        return jsonify({'status': 'success', 'filename': file.filename})
-    return jsonify({'status': 'error', 'message': 'Only PDF uploads allowed'}), 400
+    return render_template('dashboard.html', paper_file="sample.pdf")
 
 @app.route('/submit_marks', methods=['POST'])
 def submit_marks():
-    data = request.get_json()
-    print("Received Data:", data)
-    return jsonify({'status': 'success'})
+    try:
+        # AJAX कडून आलेला डेटा मिळवणे
+        data = request.get_json()
+        paper_file = data.get('paper_file', 'unknown.pdf')
+        q1 = int(data.get('q1', 0))
+        q2 = int(data.get('q2', 0))
+        total = q1 + q2
+
+        # डेटा Excel (CSV) फाईलमध्ये सेव्ह करणे
+        with open(DATABASE_FILE, mode='a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([paper_file, q1, q2, total])
+
+        # ब्राउझरला यशस्वी झाल्याचा मेसेज पाठवणे
+        return jsonify({'status': 'success', 'total': total})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
