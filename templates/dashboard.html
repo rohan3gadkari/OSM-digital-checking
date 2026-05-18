@@ -8,21 +8,24 @@
         body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f2f5; }
         .container { display: flex; height: 100vh; }
         .pdf-panel { width: 70%; border-right: 3px solid #333; background-color: #525659; position: relative; }
-        .marks-panel { width: 30%; padding: 25px; background-color: #ffffff; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; color: #333; }
-        input[type="number"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; transition: 0.3s; }
-        input[type="number"]:focus { border-color: #2b7a78; outline: none; }
-        .total-box { background-color: #e2f0d9; padding: 15px; border: 2px dashed #385723; border-radius: 6px; text-align: center; margin-bottom: 15px; }
-        .total-box h3 { margin: 0; color: #385723; font-size: 22px; }
-        .btn-submit { width: 100%; padding: 14px; background-color: #2b7a78; color: white; border: none; font-size: 16px; cursor: pointer; border-radius: 6px; font-weight: bold; margin-bottom: 10px; }
+        .marks-panel { width: 30%; padding: 20px; background-color: #ffffff; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; box-shadow: -2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; }
+        .upload-section { background-color: #f8f9fa; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; }
+        .upload-section h4 { margin: 0 0 8px 0; color: #333; }
+        .form-group { margin-bottom: 12px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; color: #333; font-size: 14px; }
+        input[type="number"], input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .total-box { background-color: #e2f0d9; padding: 12px; border: 2px dashed #385723; border-radius: 6px; text-align: center; margin-bottom: 12px; }
+        .total-box h3 { margin: 0; color: #385723; font-size: 20px; }
+        .btn-submit { width: 100%; padding: 12px; background-color: #2b7a78; color: white; border: none; font-size: 16px; cursor: pointer; border-radius: 6px; font-weight: bold; margin-bottom: 8px; }
         .btn-submit:hover { background-color: #17252a; }
+        .btn-upload { background-color: #17252a; color: white; border: none; padding: 6px 12px; font-size: 13px; cursor: pointer; border-radius: 4px; margin-top: 5px; width: 100%; font-weight: bold; }
         .nav-buttons { display: flex; gap: 10px; }
         .btn-nav { flex: 1; padding: 10px; background-color: #def2f1; color: #2b7a78; border: 1px solid #2b7a78; font-weight: bold; cursor: pointer; border-radius: 6px; }
         .btn-nav:hover { background-color: #2b7a78; color: white; }
-        #msg { text-align: center; font-weight: bold; margin-top: 10px; display: none; padding: 8px; border-radius: 4px; }
+        #msg, #uploadMsg { text-align: center; font-weight: bold; margin-top: 8px; display: none; padding: 6px; border-radius: 4px; font-size: 14px; }
         .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .paper-info { background-color: #17252a; color: white; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .paper-info { background-color: #17252a; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -34,9 +37,18 @@
 
     <div class="marks-panel">
         <div>
-            <h2>OSM Evaluation Panel</h2>
-            <hr><br>
+            <h3 style="margin-top:0; color:#17252a;">OSM Evaluation Panel</h3>
+            <hr>
             
+            <div class="upload-section">
+                <h4>📁 Upload New Answer Sheet</h4>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="file" id="pdfFile" name="file" accept=".pdf" required>
+                    <button type="button" class="btn-upload" onclick="uploadPDFViaAJAX()">Upload PDF</button>
+                </form>
+                <div id="uploadMsg"></div>
+            </div>
+
             <div class="paper-info">
                 📄 Current Paper: <span id="paperName">{{ current_paper }}</span>
             </div>
@@ -73,6 +85,47 @@
         let q3 = parseInt(document.getElementById('q3').value) || 0;
         let q4 = parseInt(document.getElementById('q4').value) || 0;
         document.getElementById('liveTotal').innerText = q1 + q2 + q3 + q4;
+    }
+
+    // 🚀 वेबसाईटवरून फाईल अपलोड करण्याचे फंक्शन
+    function uploadPDFViaAJAX() {
+        let fileInput = document.getElementById('pdfFile');
+        let msgDiv = document.getElementById('uploadMsg');
+        
+        if (fileInput.files.length === 0) {
+            alert("कृपया आधी एक PDF फाईल निवडा!");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        msgDiv.style.display = 'block';
+        msgDiv.className = "";
+        msgDiv.innerText = "अपलोड होत आहे, कृपया वाट पहा...";
+
+        fetch('/upload_paper', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                msgDiv.className = "success";
+                msgDiv.innerText = "✔️ " + data.message;
+                // २ सेकंदांनंतर नवीन अपलोड झालेला पेपर दाखवण्यासाठी पेज रिफ्रेश करणे
+                setTimeout(() => {
+                    window.location.href = "/?paper=" + data.filename;
+                }, 2000);
+            } else {
+                msgDiv.className = "error";
+                msgDiv.innerText = "❌ " + data.message;
+            }
+        })
+        .catch(error => {
+            msgDiv.className = "error";
+            msgDiv.innerText = "❌ अपलोड करताना चूक झाली!";
+        });
     }
 
     function submitMarksViaAJAX() {
