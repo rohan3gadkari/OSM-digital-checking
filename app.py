@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from io import StringIO, BytesIO
 
 app = Flask(__name__)
-app.secret_key = 'solapur_university_osm_secure_key'
+app.secret_key = 'osm_secure_key'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'answer_sheets')
@@ -143,6 +143,72 @@ def submit_marks():
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# ========================================================
+# 📊 EXCEL (CSV FORMAT) GENERATION ROUTE - 100% SAFE FOR RENDER
+# ========================================================
+@app.route('/download_excel')
+def download_excel():
+    try:
+        db = load_permanent_db()
+        all_data = db.get("data", {})
+        
+        if not all_data:
+            return "<h3>कोणताही डेटा उपलब्ध नाही! आधी पेपर्स तपासून सबमिट करा.</h3>", 400
+            
+        # Excel साठी हेडिंग्स (Columns) तयार करणे
+        headers = ["Barcode", "Subject", "Paper Name", "Status"]
+        for q in GLOBAL_STRUCTURE:
+            headers.append(q["label"])
+            
+        # मेमरीमध्ये CSV तयार करणे (ज्याला Excel डायरेक्ट सपोर्ट करते)
+        si = StringIO()
+        cw = csv.writer(si)
+        cw.writerow(headers) # पहिली लाईन (Headers)
+        
+        # विद्यार्थ्यांचा डेटा भरणे
+        for barcode, details in all_data.items():
+            status = "Locked & Verified" if barcode in db.get("locked", []) else "Draft"
+            row = [
+                barcode,
+                details.get("subject", ""),
+                details.get("paper", ""),
+                status
+            ]
+            
+            scores = details.get("scores", {})
+            for q in GLOBAL_STRUCTURE:
+                q_id = q["id"]
+                val = scores.get(q_id, "0")
+                
+                # टिक आणि फुलीचे मार्क्स मॅप करणे
+                if val == "✔️":
+                    row.append(q["max"])
+                elif val == "❌":
+                    row.append(0)
+                else:
+                    try:
+                        row.append(float(val))
+                    except:
+                        row.append(val)
+                        
+            cw.writerow(row)
+            
+        output = BytesIO()
+        output.write(si.getvalue().encode('utf-8-sig')) # utf-8-sig मुळे मराठी/इंग्रजी अक्षरे Excel मध्ये नीट दिसतात
+        output.seek(0)
+        
+        return send_file(
+            output,
+            mimetype="text/csv",
+            as_attachment=True,
+            download_name="Solapur_University_OSM_Marks.csv"
+        )
+        
+    except Exception as e:
+        return f"<h3>Excel Error: {str(e)}</h3>", 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
