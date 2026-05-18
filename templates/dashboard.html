@@ -4,29 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced OSM Hub - Digital Evaluation</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/style.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #1a202c; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
         .navbar-custom { background-color: #2d3748; padding: 10px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .sidebar-left { background-color: #2d3748; min-height: 90vh; padding: 15px; }
-        .sidebar-right { background-color: #ffffff; color: #333333; min-height: 90vh; padding: 20px; border-left: 2px solid #cbd5e0; box-shadow: -4px 0 10px rgba(0,0,0,0.1); }
-        .pdf-viewer-container { background-color: #525659; height: 82vh; border-radius: 8px; border: 2px solid #4a5568; display: flex; justify-content: center; align-items: flex-start; overflow: hidden; padding: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        .btn-grade { width: 45%; margin: 5px; font-weight: bold; border-radius: 6px; padding: 8px; font-size: 14px; }
-        .stamp-btn { width: 45%; margin: 5px; font-weight: bold; font-size: 16px; }
+        .sidebar-left { background-color: #2d3748; min-height: 92vh; padding: 15px 5px; }
+        .sidebar-right { background-color: #ffffff; color: #333333; min-height: 92vh; padding: 20px 15px; border-left: 2px solid #cbd5e0; box-shadow: -4px 0 10px rgba(0,0,0,0.1); }
+        .pdf-viewer-container { background-color: #525659; height: 85vh; border-radius: 8px; border: 2px solid #4a5568; display: flex; justify-content: center; align-items: flex-start; overflow: hidden; padding: 5px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .btn-grade { width: 42%; margin: 4px; font-weight: bold; border-radius: 6px; padding: 6px; font-size: 13px; }
+        .stamp-btn { width: 42%; margin: 4px; font-weight: bold; font-size: 15px; padding: 6px; }
         .score-box { background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 18px; font-weight: bold; text-align: center; margin-top: 15px; }
         .form-control-sm, .form-select-sm { border-radius: 6px; border: 1px solid #cbd5e0; font-weight: 500; }
         .q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 4px; border-bottom: 1px solid #edf2f7; }
         .q-label { font-weight: 600; font-size: 13px; color: #2d3748; width: 40%; }
         .q-max { font-size: 12px; color: #e53e3e; font-weight: bold; width: 20%; text-align: center; }
         .q-input { width: 35%; text-align: center; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e0; }
-        .matrix-container { max-height: 48vh; overflow-y: auto; padding-right: 5px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; padding: 10px; }
+        .matrix-container { max-height: 44vh; overflow-y: auto; padding-right: 5px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div class="navbar-custom d-flex justify-content-between align-items-center">
         <div>
-            <span style="font-size: 12px; color: #a0aec0; display: block; font-weight: 600;">Subject Name:</span>
+            <span style="font-size: 11px; color: #a0aec0; display: block; font-weight: 600; text-transform: uppercase;">Subject Name:</span>
             <span id="display-subject" style="font-size: 16px; font-weight: bold; color: #f7fafc;">{{ subject_name }}</span>
         </div>
         <div class="d-flex gap-2">
@@ -42,12 +42,12 @@
     <div class="container-fluid">
         <div class="row">
             
-            <div class="col-md-1 sidebar-left text-center">
-                <p class="text-uppercase font-monospace small" style="color: #cbd5e0; letter-spacing: 1px;">Status</p>
+            <div class="col-1 sidebar-left text-center">
+                <p class="text-uppercase font-monospace small mb-2" style="color: #cbd5e0; font-size: 11px; letter-spacing: 1px;">Status</p>
                 <button class="btn btn-danger stamp-btn" onclick="setStamp('❌')">❌</button>
                 <button class="btn btn-success stamp-btn" onclick="setStamp('✔️')">✔️</button>
-                <hr style="border-color: #4a5568;">
-                <p class="text-uppercase font-monospace small" style="color: #cbd5e0; letter-spacing: 1px;">Grades</p>
+                <hr style="border-color: #4a5568;" class="my-2">
+                <p class="text-uppercase font-monospace small mb-2" style="color: #cbd5e0; font-size: 11px; letter-spacing: 1px;">Grades</p>
                 <button class="btn btn-light btn-grade" onclick="setScoreValue(0)">0</button>
                 <button class="btn btn-warning btn-grade" onclick="setScoreValue('½')">½</button>
                 <button class="btn btn-light btn-grade" onclick="setScoreValue(1)">1</button>
@@ -60,10 +60,10 @@
                 <button class="btn btn-light btn-grade" onclick="setScoreValue(8)">8</button>
                 <button class="btn btn-light btn-grade" onclick="setScoreValue(9)">9</button>
                 <button class="btn btn-light btn-grade" onclick="setScoreValue(10)">10</button>
-                <button class="btn btn-secondary mt-3 w-100 btn-sm" onclick="clearAllMarks()">CLR MARKS</button>
+                <button class="btn btn-secondary mt-3 btn-sm w-100" style="font-size: 10px;" onclick="clearAllMarks()">CLR MARKS</button>
             </div>
 
-            <div class="col-md-8 p-3">
+            <div class="col-8 p-3">
                 <div class="pdf-viewer-container">
                     <iframe 
                         id="pdf-frame"
@@ -75,7 +75,7 @@
                 </div>
             </div>
 
-            <div class="col-md-3 sidebar-right">
+            <div class="col-3 sidebar-right">
                 
                 <div class="mb-3 p-2 border rounded" style="background-color: #f8fafc;">
                     <label class="form-label small fw-bold text-dark mb-1">📤 Upload New Sheet:</label>
@@ -95,12 +95,9 @@
                     </select>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="text-dark fw-bold m-0" style="font-size: 13px;">📋 MARKING MATRIX (Q1 - Q7)</h6>
-                </div>
-                
+                <h6 class="text-dark fw-bold mb-2" style="font-size: 12px; letter-spacing: 0.5px;">📋 MARKING MATRIX (Q1 - Q7)</h6>
                 <div class="matrix-container">
-                    <div class="q-row fw-bold border-bottom pb-1 mb-2" style="color: #4a5568; font-size: 12px; background: #edf2f7; position: sticky; top: 0;">
+                    <div class="q-row fw-bold border-bottom pb-1 mb-2" style="color: #4a5568; font-size: 12px; background: #edf2f7; position: sticky; top: 0; z-index: 10;">
                         <span style="width: 40%;">Q.No</span>
                         <span style="width: 20%; text-align: center;">Max</span>
                         <span style="width: 35%; text-align: center;">Obtained</span>
@@ -119,10 +116,8 @@
                 </div>
 
                 <button class="btn btn-primary w-100 mt-2 fw-bold" id="btn-final-submit" onclick="submitMarksToDatabase()">💾 Final Save & Submit</button>
-                
                 <button class="btn btn-warning w-100 mt-2 fw-bold text-dark" onclick="loadNextUncheckedPaper()">⏭️ Next Answer Sheet</button>
-
-                <a href="/download_excel" target="_blank" class="btn btn-success w-100 mt-3 fw-bold" style="background-color: #16a34a;">📊 Download Evaluation Report (Excel)</a>
+                <a href="/download_excel" target="_blank" class="btn btn-success w-100 mt-3 fw-bold" style="background-color: #16a34a;">📊 Download Report (Excel)</a>
             </div>
 
         </div>
@@ -134,7 +129,6 @@
         const savedScores = JSON.parse('{{ saved_scores|safe }}');
         const isLocked = {{ is_locked }};
 
-        // पूर्वी सेव्ह केलेले मार्क्स लोड करणे
         window.onload = function() {
             if (savedScores && Object.keys(savedScores).length > 0) {
                 for (let q_id in savedScores) {
@@ -144,7 +138,7 @@
             }
             if (isLocked) {
                 document.getElementById('btn-final-submit').disabled = true;
-                document.getElementById('btn-final-submit').innerText = "🔒 Marks Locked & Submitted";
+                document.getElementById('btn-final-submit').innerText = "🔒 Marks Locked";
                 document.getElementById('btn-final-submit').className = "btn btn-secondary w-100 mt-2 fw-bold";
             }
             validateAndCalculate();
@@ -152,10 +146,9 @@
 
         function setCurrentActiveInput(id) {
             currentActiveInputId = id;
-            // हायलाईट करण्यासाठी सर्व रोजचा बॅकग्राउंड रिसेट करणे
             document.querySelectorAll('.q-row').forEach(r => r.style.backgroundColor = 'transparent');
             let activeRow = document.getElementById('row_' + id.replace('input_', ''));
-            if (activeRow) activeRow.style.backgroundColor = '#fef08a'; // फिकट पिवळा रंग
+            if (activeRow) activeRow.style.backgroundColor = '#fef08a';
         }
 
         function setScoreValue(val) {
@@ -177,7 +170,6 @@
         }
 
         function moveToNextInput() {
-            let currentIdNum = null;
             for(let i=0; i<globalStructure.length; i++) {
                 if("input_" + globalStructure[i].id === currentActiveInputId) {
                     if(i + 1 < globalStructure.length) {
@@ -194,7 +186,7 @@
         }
 
         function clearAllMarks() {
-            if(confirm("सर्व भरलेले मार्क्स क्लियर करायचे आहेत का?")) {
+            if(confirm("सर्व मार्क्स रीसेट करायचे?")) {
                 globalStructure.forEach(q => {
                     let inp = document.getElementById("input_" + q.id);
                     if(inp) inp.value = "0";
@@ -217,7 +209,7 @@
                         let num = parseFloat(val);
                         if (!isNaN(num)) {
                             if (num > q.max) {
-                                alert(`${q.label} साठी मॅक्सिमम ${q.max} गुण देता येतात!`);
+                                alert(`${q.label} साठी कमाल ${q.max} गुण देता येतात!`);
                                 inp.value = 0;
                                 num = 0;
                             }
@@ -240,8 +232,7 @@
                 barcode: document.getElementById('current-barcode').innerText,
                 subject: document.getElementById('display-subject').innerText,
                 paper: "{{ current_paper }}",
-                scores: scoresData,
-                stamps: []
+                scores: scoresData
             };
 
             fetch('/submit_marks', {
@@ -252,13 +243,13 @@
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'success') {
-                    alert('गुण यशस्वीरित्या डेटाबेसमध्ये सबमिट आणि लॉक झाले आहेत!');
+                    alert('गुण डेटाबेसमध्ये यशस्वीरित्या सेव्ह व लॉक झाले!');
                     location.reload();
                 } else {
-                    alert('एरर: ' + data.message);
+                    alert('त्रुटी: ' + data.message);
                 }
             })
-            .catch(err => alert('सबमिशन फेल झाले: ' + err));
+            .catch(err => alert('सबमिशन अपयशी: ' + err));
         }
 
         function loadNextUncheckedPaper() {
