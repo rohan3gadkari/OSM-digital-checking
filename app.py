@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from io import StringIO, BytesIO
 
 app = Flask(__name__)
-app.secret_key = 'osm_secure_key'
+app.secret_key = 'solapur_university_osm_secure_key'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'answer_sheets')
@@ -146,7 +146,7 @@ def submit_marks():
 
 
 # ========================================================
-# 📊 EXCEL (CSV FORMAT) GENERATION ROUTE - 100% SAFE FOR RENDER
+# 📊 EXCEL (CSV FORMAT) GENERATION ROUTE (नवीन सुरक्षित मार्ग)
 # ========================================================
 @app.route('/download_excel')
 def download_excel():
@@ -155,17 +155,17 @@ def download_excel():
         all_data = db.get("data", {})
         
         if not all_data:
-            return "<h3>कोणताही डेटा उपलब्ध नाही! आधी पेपर्स तपासून सबमिट करा.</h3>", 400
+            return "<h3>कोणताही डेटा उपलब्ध नाही! आधी किमान एका पेपरचे मार्क्स तपासून 'Final Save & Submit' करा.</h3>", 400
             
-        # Excel साठी हेडिंग्स (Columns) तयार करणे
+        # Excel कॉलम्स तयार करणे
         headers = ["Barcode", "Subject", "Paper Name", "Status"]
         for q in GLOBAL_STRUCTURE:
             headers.append(q["label"])
             
-        # मेमरीमध्ये CSV तयार करणे (ज्याला Excel डायरेक्ट सपोर्ट करते)
+        # मेमरीमध्ये CSV तयार करणे
         si = StringIO()
         cw = csv.writer(si)
-        cw.writerow(headers) # पहिली लाईन (Headers)
+        cw.writerow(headers)
         
         # विद्यार्थ्यांचा डेटा भरणे
         for barcode, details in all_data.items():
@@ -182,7 +182,7 @@ def download_excel():
                 q_id = q["id"]
                 val = scores.get(q_id, "0")
                 
-                # टिक आणि फुलीचे मार्क्स मॅप करणे
+                # ✔️ आणि ❌ चे मार्क्समध्ये रुपांतर करणे
                 if val == "✔️":
                     row.append(q["max"])
                 elif val == "❌":
@@ -196,14 +196,14 @@ def download_excel():
             cw.writerow(row)
             
         output = BytesIO()
-        output.write(si.getvalue().encode('utf-8-sig')) # utf-8-sig मुळे मराठी/इंग्रजी अक्षरे Excel मध्ये नीट दिसतात
+        output.write(si.getvalue().encode('utf-8-sig')) # utf-8-sig मुळे मराठी आणि इंग्रजी अक्षरे एक्सलमध्ये व्यवस्थित दिसतात
         output.seek(0)
         
         return send_file(
             output,
             mimetype="text/csv",
             as_attachment=True,
-            download_name="Solapur_University_OSM_Marks.csv"
+            download_name="OSM_Evaluated_Marks.csv"
         )
         
     except Exception as e:
