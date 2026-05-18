@@ -5,13 +5,13 @@ import os
 app = Flask(__name__)
 DATABASE_FILE = 'marks_database.csv'
 
-# सुरवातीला डेटाबेस तयार करणे
+# सुरुवातीला एक्सेल हेडर तयार करणे
 if not os.path.exists(DATABASE_FILE):
     with open(DATABASE_FILE, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['Paper File', 'Q1', 'Q2', 'Q3', 'Q4', 'Total Marks'])
 
-# 'static/answer_sheets' मधील सर्व पेपर्सची यादी मिळवणे
+# सर्व उपलब्ध PDF पेपर्सची लिस्ट मिळवणे
 def get_all_papers():
     folder = os.path.join('static', 'answer_sheets')
     if not os.path.exists(folder):
