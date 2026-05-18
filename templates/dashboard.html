@@ -3,114 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional OSM Workspace</title>
+    <title>Advanced OSM Hub</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         
-        /* 🏢 IndiaMART स्टाईल टॉप हेडर बार */
+        /* 🏢 टॉप हेडर */
         .top-navbar {
             background: #2c3e50; color: white; padding: 0 20px;
             display: flex; justify-content: space-between; align-items: center; height: 55px;
-            border-bottom: 3px solid #34495e; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border-bottom: 3px solid #34495e;
         }
-        .top-navbar h3 { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
-        .meta-container { display: flex; align-items: center; gap: 15px; }
+        .subject-title-input { background: transparent; border: 1px dashed #cbd5e1; color: white; font-size: 15px; font-weight: bold; padding: 4px 8px; border-radius: 4px; width: 280px; }
         .barcode-badge { background: #e67e22; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 13px; }
-        .lock-status-banner { background: #e74c3c; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: none; }
+        .lock-banner { background: #e74c3c; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: none; }
         
         .osm-container { display: flex; height: calc(100vh - 55px); overflow: hidden; background: #f1f5f9; }
 
-        /* 🎛️ डावा की-पॅड पॅनेल (Eklavya/IndiaMART लेआउट) */
+        /* 🎛️ नवीन प्रगत की-पॅड (सर्व विचारलेले कीज समाविष्ट) */
         .tool-sidebar {
-            width: 75px; background: #1e293b; padding: 15px 5px;
-            display: flex; flex-direction: column; align-items: center; gap: 10px; border-right: 1px solid #0f172a;
+            width: 110px; background: #1e293b; padding: 10px 5px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid #0f172a; overflow-y: auto;
         }
-        .tool-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-weight: bold; }
+        .tool-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; }
+        .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; padding: 0 4px; }
         .circle-key {
-            width: 46px; height: 46px; border-radius: 50%; border: none;
-            background: #f8fafc; color: #1e293b; font-size: 18px; font-weight: 700;
+            height: 42px; border-radius: 6px; border: none;
+            background: #f8fafc; color: #1e293b; font-size: 15px; font-weight: 700;
             cursor: pointer; display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15); transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15); transition: all 0.1s;
         }
-        .circle-key:hover { background: #38bdf8; color: white; transform: translateY(-2px); }
-        .clear-btn { background: #ef4444; color: white; font-size: 12px; }
-        .clear-btn:hover { background: #dc2626; }
+        .circle-key:hover { background: #38bdf8; color: white; }
+        .special-key { background: #f39c12; color: white; }
+        .wrong-key { background: #e74c3c; color: white; font-size: 13px; }
+        .right-key { background: #2ecc71; color: white; font-size: 13px; }
+        .clear-btn { background: #95a5a6; color: white; grid-column: span 2; height: 35px; font-size: 12px; }
 
-        /* 📄 मधला आन्सर शीट डिस्प्ले एरिया */
+        /* 📄 मधला पीडीएफ एरिया + डिजिटल मार्किंग ओव्हरले */
         .pdf-viewer-container { flex: 1; background: #64748b; padding: 15px; display: flex; justify-content: center; overflow-y: auto; }
-        .pdf-canvas { width: 100%; max-width: 850px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; }
+        .pdf-canvas-wrapper { width: 100%; max-width: 850px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-radius: 6px; position: relative; }
+        
+        /* ✍️ उत्तरपत्रिकेवर लाल रंगात मार्क दाखवण्यासाठी ओव्हरले लेयर */
+        .annotation-overlay {
+            position: absolute; top: 80px; left: 40px; 
+            background: rgba(255, 255, 255, 0.9); border: 2px dashed #e74c3c;
+            color: #d35400; padding: 8px 15px; font-size: 24px; font-weight: 900;
+            border-radius: 6px; pointer-events: none; display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: 'Courier New', monospace;
+            z-index: 100;
+        }
 
-        /* 📊 उजवा मार्किंग मॅट्रिक्स पॅनेल */
-        .evaluation-panel { width: 360px; background: white; border-left: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
-        .panel-title { font-size: 13px; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px; font-weight: bold; text-transform: uppercase; }
+        /* 📊 उजवा पॅनेल */
+        .evaluation-panel { width: 350px; background: white; border-left: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; }
+        .panel-title { font-size: 12px; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 5px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; }
         
-        /* 📜 स्क्रोलिंग टेबल */
-        .table-scroll { overflow-y: auto; flex-grow: 1; max-height: calc(100vh - 310px); border: 1px solid #cbd5e1; border-radius: 6px; }
-        .marks-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
-        .marks-table th { background: #475569; color: white; padding: 10px 8px; font-weight: 600; position: sticky; top: 0; z-index: 10; font-size: 12px; }
-        .marks-table td { padding: 6px; border: 1px solid #e2e8f0; }
+        /* 📤 अपलोड सेक्शन */
+        .upload-section { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .upload-section label { font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px; }
+        .upload-row { display: flex; gap: 5px; }
+        .file-input { font-size: 11px; flex: 1; }
+        .btn-upload { background: #34495e; color: white; border: none; padding: 4px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+
+        .table-scroll { overflow-y: auto; flex-grow: 1; max-height: calc(100vh - 380px); border: 1px solid #cbd5e1; border-radius: 6px; }
+        .marks-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
+        .marks-table th { background: #475569; color: white; padding: 8px 4px; position: sticky; top: 0; z-index: 10; }
+        .marks-table td { padding: 5px; border: 1px solid #e2e8f0; }
         
-        /* इनपुट बॉक्स */
-        .mark-input { width: 65px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 4px; padding: 5px; font-size: 14px; font-weight: bold; color: #1e293b; background: #f8fafc; }
-        .mark-input:focus { outline: none; border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-        
-        .max-editable-input { width: 55px; text-align: center; border: 1.5px solid #fbcfe8; border-radius: 4px; padding: 5px; font-size: 13px; font-weight: bold; color: #b45309; background: #fffbeb; }
-        .max-editable-input:focus { outline: none; border-color: #f59f00; background: #fff; }
-        
+        .mark-input { width: 55px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 4px; padding: 4px; font-weight: bold; }
+        .max-input { width: 45px; text-align: center; border: 1.5px solid #fbcfe8; border-radius: 4px; padding: 4px; color: #b45309; font-weight: bold; }
         .active-row { background: #fef08a !important; }
 
-        /* 💾 तळाचे ॲक्शन कंट्रोल्स */
-        .action-section { margin-top: 15px; }
-        .total-box { background: #10b981; color: white; padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 10px; font-size: 16px; font-weight: bold; }
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        .action-btn { padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-submit { background: #2563eb; color: white; width: 100%; font-size: 14px; letter-spacing: 0.5px; }
-        .btn-submit:hover { background: #1d4ed8; }
-        
-        .btn-nav { background: #64748b; color: white; padding: 8px; border: none; border-radius: 4px; flex: 1; cursor: pointer; font-size: 13px; text-align: center; text-decoration: none; font-weight: 500; display: inline-block; }
-        .btn-nav:hover { background: #475569; }
+        .total-box { background: #10b981; color: white; padding: 10px; border-radius: 6px; text-align: center; margin-bottom: 8px; font-size: 15px; font-weight: bold; }
+        .btn-submit { background: #2563eb; color: white; width: 100%; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-nav { background: #64748b; color: white; padding: 6px; text-align: center; text-decoration: none; font-weight: 500; display: inline-block; font-size: 12px; border-radius: 4px; flex: 1; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
-        <h3>Subject: Advanced Evaluation Workspace</h3>
+        <div>
+            <span style="font-size: 12px; color: #cbd5e1;">Subject Name (Type to change):</span><br>
+            <input type="text" id="liveSubjectName" class="subject-title-input" value="{{ subject_name }}" oninput="updateSubjectInUploadForm()">
+        </div>
         <div class="meta-container">
-            <div id="lockBanner" class="lock-status-banner">🔒 PERMANENTLY LOCKED</div>
-            <div>
-                BarCode No: <span class="barcode-badge" id="currentBarcode">{{ barcode }}</span>
-            </div>
+            <div id="lockBanner" class="lock-banner">🔒 PERMANENTLY LOCKED</div>
+            <div>BarCode No: <span class="barcode-badge" id="currentBarcode">{{ barcode }}</span></div>
         </div>
     </div>
 
     <div class="osm-container" id="osmMainContainer" data-locked="{{ is_locked | safe }}">
         
         <div class="tool-sidebar">
-            <span class="tool-label">Keys</span>
-            <button class="circle-key" onclick="enterMark('1')">1</button>
-            <button class="circle-key" onclick="enterMark('2')">2</button>
-            <button class="circle-key" onclick="enterMark('3')">3</button>
-            <button class="circle-key" onclick="enterMark('4')">4</button>
-            <button class="circle-key" onclick="enterMark('5')">5</button>
-            <button class="circle-key" onclick="enterMark('0')">0</button>
-            <button class="circle-key clear-btn" onclick="resetAllMarks()">CLR</button>
+            <span class="tool-label">Status</span>
+            <div class="key-grid">
+                <button class="circle-key wrong-key" onclick="enterMark('❌')">❌</button>
+                <button class="circle-key right-key" onclick="enterMark('✔️')">✔️</button>
+            </div>
+            
+            <span class="tool-label">Grades</span>
+            <div class="key-grid">
+                <button class="circle-key" onclick="enterMark('0')">0</button>
+                <button class="circle-key special-key" onclick="enterMark('0.5')">½</button>
+                <button class="circle-key" onclick="enterMark('1')">1</button>
+                <button class="circle-key" onclick="enterMark('2')">2</button>
+                <button class="circle-key" onclick="enterMark('3')">3</button>
+                <button class="circle-key" onclick="enterMark('4')">4</button>
+                <button class="circle-key" onclick="enterMark('5')">5</button>
+                <button class="circle-key" onclick="enterMark('6')">6</button>
+                <button class="circle-key" onclick="enterMark('7')">7</button>
+                <button class="circle-key" onclick="enterMark('8')">8</button>
+                <button class="circle-key" onclick="enterMark('9')">9</button>
+                <button class="circle-key" onclick="enterMark('10')">10</button>
+                <button class="circle-key clear-btn" onclick="resetAllMarks()">CLR</button>
+            </div>
         </div>
 
         <div class="pdf-viewer-container">
-            <div class="pdf-canvas">
-                <iframe src="{{ url_for('static', filename='answer_sheets/' + current_paper) }}#toolbar=0&navpanes=0" width="100%" height="100%" style="border: none;"></iframe>
+            <div class="pdf-canvas-wrapper">
+                <div id="pdfStamp" class="annotation-overlay">✔️ Marks: 0</div>
+                
+                <object data="{{ url_for('static', filename='answer_sheets/' + current_paper) }}#toolbar=0&navpanes=0&scrollbar=1" type="application/pdf" width="100%" height="100%" style="min-height: calc(100vh - 90px); display: block;">
+                    <p>PDF सपोर्ट उपलब्ध नाही.</p>
+                </object>
             </div>
         </div>
 
         <div class="evaluation-panel">
             <div>
+                <div class="upload-section">
+                    <label>📤 Upload New Answer Sheet (PDF):</label>
+                    <form action="/upload_sheet" method="POST" enctype="multipart/form-data" class="upload-row">
+                        <input type="hidden" name="subject" id="hiddenSubjectFormInput" value="{{ subject_name }}">
+                        <input type="file" name="file" accept=".pdf" class="file-input" required>
+                        <button type="submit" class="btn-upload">Upload</button>
+                    </form>
+                </div>
+
                 <div class="panel-title">📋 Question Paper Marking Matrix</div>
                 <div class="table-scroll">
                     <table class="marks-table">
                         <thead>
                             <tr>
                                 <th>Q.No</th>
-                                <th>Max (Edit)</th>
+                                <th>Max</th>
                                 <th>Obtained</th>
                             </tr>
                         </thead>
@@ -119,10 +153,10 @@
                             <tr id="row-{{ q.id }}">
                                 <td><strong>{{ q.label }}</strong></td>
                                 <td>
-                                    <input type="number" id="max-{{ q.id }}" class="max-editable-input" value="{{ q.max }}" min="1" oninput="updateMaxLimitLive('{{ q.id }}')">
+                                    <input type="number" id="max-{{ q.id }}" class="max-input" value="{{ q.max }}" min="1" oninput="updateMaxLimitLive('{{ q.id }}')">
                                 </td>
                                 <td>
-                                    <input type="number" id="{{ q.id }}" class="mark-input" min="0" max="{{ q.max }}" value="0" onfocus="setActiveQuestion('{{ q.id }}')" oninput="calculateLiveTotal()">
+                                    <input type="text" id="{{ q.id }}" class="mark-input" value="0" onfocus="setActiveQuestion('{{ q.id }}')" oninput="calculateLiveTotal()">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -136,32 +170,25 @@
                     Total Score: <span id="liveTotal">0</span> / <span id="liveMaxTotal">{{ total_max }}</span>
                 </div>
                 
-                <div class="btn-grid">
-                    <button class="action-btn" style="background: #ef4444; color: white;" onclick="alert('Paper Flagged as Rejected')">Reject</button>
-                    <button class="action-btn" style="background: #f59f00; color: white;" onclick="alert('Paper Kept On Hold')">Hold</button>
-                </div>
+                <button class="btn-submit" id="submitBtn" onclick="submitMarksViaAJAX()">🔒 Final Save & Submit</button>
                 
-                <button class="action-btn btn-submit" id="submitBtn" onclick="submitMarksViaAJAX()">🔒 Final Save & Submit (1 Time Lock)</button>
-                
-                <button type="button" onclick="window.location.href='/download_excel'" style="width: 100%; padding: 10px; background: #10b981; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(16,185,129,0.15);">
-                    📊 Download Evaluation Report (Excel)
-                </button>
-                
-                <div style="display: flex; gap: 10px; margin-top: 10px; justify-content: space-between;">
-                    <a class="btn-nav" href="/?paper=sample.pdf">📄 Answer Sheet 1</a>
-                    <a class="btn-nav" href="/?paper=student_02.pdf">📄 Answer Sheet 2</a>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <a class="btn-nav" href="/?paper=sample.pdf&subject={{ subject_name }}">📄 Sheet 1</a>
+                    <a class="btn-nav" href="/?paper=student_02.pdf&subject={{ subject_name }}">📄 Sheet 2</a>
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
         let activeQuestionId = '';
-        
-        // 🔒 HTML ॲट्रिब्यूटमधून लॉक स्थिती सुरक्षितपणे मिळवणे (कोणतीही VS Code एरर येणार नाही)
         const mainContainer = document.getElementById('osmMainContainer');
         const isPageLocked = mainContainer ? (mainContainer.getAttribute('data-locked') === 'true') : false;
+
+        function updateSubjectInUploadForm() {
+            let currentSub = document.getElementById('liveSubjectName').value;
+            document.getElementById('hiddenSubjectFormInput').value = currentSub;
+        }
 
         function setActiveQuestion(qId) {
             if(isPageLocked) return;
@@ -175,28 +202,46 @@
         }
 
         function updateMaxLimitLive(qId) {
-            let maxInputVal = document.getElementById('max-' + qId).value || 1;
-            let targetMarkInput = document.getElementById(qId);
-            targetMarkInput.setAttribute('max', maxInputVal);
-            if (parseInt(targetMarkInput.value) > parseInt(maxInputVal)) { targetMarkInput.value = maxInputVal; }
-            
+            let maxVal = parseFloat(document.getElementById('max-' + qId).value) || 1;
             let grandMax = 0;
-            document.querySelectorAll('.max-editable-input').forEach(input => { grandMax += parseInt(input.value) || 0; });
+            document.querySelectorAll('.max-input').forEach(input => { grandMax += parseFloat(input.value) || 0; });
             document.getElementById('liveMaxTotal').innerText = grandMax;
             calculateLiveTotal();
         }
 
-        function enterMark(num) {
+        // ✍️ की-पॅड प्रेस केल्यावर उत्तरपत्रिकेवर लाल रंगात मार्क उमटवण्याचे फंक्शन
+        function enterMark(val) {
             if(isPageLocked) return;
             if (activeQuestionId) {
                 let targetInput = document.getElementById(activeQuestionId);
-                let maxAllowed = parseInt(targetInput.getAttribute('max')) || 0;
+                let maxAllowed = parseFloat(document.getElementById('max-' + activeQuestionId).value) || 0;
                 
-                if (parseInt(num) <= maxAllowed) { targetInput.value = num; } 
-                else { targetInput.value = maxAllowed; }
+                // इनपुट बॉक्समध्ये व्हॅल्यू सेट करणे
+                if (val === '❌') {
+                    targetInput.value = '0';
+                } else if (val === '✔️') {
+                    targetInput.value = maxAllowed;
+                } else {
+                    let numericVal = parseFloat(val);
+                    if (numericVal > maxAllowed) {
+                        targetInput.value = maxAllowed;
+                    } else {
+                        targetInput.value = val;
+                    }
+                }
+
+                // 🔴 उत्तरपत्रिकेवर डिजिटल स्टँप एनिमेट करणे
+                let stamp = document.getElementById('pdfStamp');
+                stamp.style.display = 'block';
+                stamp.innerHTML = `${val} (Q: ${activeQuestionId.replace('q', '')})`;
                 
+                // रँडम पोझिशन किंवा एका फिक्स जागी इफेक्ट देण्यासाठी
+                let randomTop = Math.floor(Math.random() * 200) + 100;
+                stamp.style.top = randomTop + "px";
+
                 calculateLiveTotal();
                 
+                // ऑटो-नेक्स्ट इनपुट फोकस
                 let allInputs = Array.from(document.querySelectorAll('.mark-input'));
                 let currentIndex = allInputs.indexOf(targetInput);
                 if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
@@ -209,41 +254,39 @@
 
         function calculateLiveTotal() {
             let grandTotal = 0;
-            document.querySelectorAll('.mark-input').forEach(input => { grandTotal += parseInt(input.value) || 0; });
+            document.querySelectorAll('.mark-input').forEach(input => {
+                let val = input.value;
+                grandTotal += parseFloat(val) || 0;
+            });
             document.getElementById('liveTotal').innerText = grandTotal;
         }
 
         function resetAllMarks() {
             if(isPageLocked) return;
-            document.querySelectorAll('.mark-input').forEach(input => input.value = 0);
+            document.querySelectorAll('.mark-input').forEach(input => input.value = '0');
+            document.getElementById('pdfStamp').style.display = 'none';
             calculateLiveTotal();
         }
 
         function submitMarksViaAJAX() {
             if(isPageLocked) return;
-
-            let scoresPayload = {};
-            let maxLimitsPayload = {};
-            document.querySelectorAll('.mark-input').forEach(input => { scoresPayload[input.id] = parseInt(input.value) || 0; });
-            document.querySelectorAll('.max-editable-input').forEach(input => {
-                let qId = input.id.replace('max-', '');
-                maxLimitsPayload[qId] = parseInt(input.value) || 2;
-            });
+            let scores = {};
+            document.querySelectorAll('.mark-input').forEach(input => { scores[input.id] = input.value; });
             
-            let dataToSend = {
+            let payload = {
                 barcode: document.getElementById('currentBarcode').innerText,
                 paper: "{{ current_paper }}",
-                scores: scoresPayload,
-                max_limits: maxLimitsPayload
+                subject: document.getElementById('liveSubjectName').value,
+                scores: scores
             };
             
             fetch('/submit_marks', {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(dataToSend)
+                body: JSON.stringify(payload)
             }).then(res => res.json()).then(data => {
                 if(data.status === 'success') {
-                    alert("🔒 पेपरमधील गुण आणि मॅक्स मार्क्स कायमचे सेव्ह झाले आहेत!");
+                    alert("🔒 डेटा आणि विषय यशस्वीरित्या सेव्ह झाला!");
                     location.reload();
                 } else {
                     alert("❌ त्रुटी: " + data.message);
@@ -253,13 +296,13 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             calculateLiveTotal();
+            updateSubjectInUploadForm();
             if(isPageLocked) {
                 document.getElementById('lockBanner').style.display = 'block';
                 document.getElementById('submitBtn').disabled = true;
                 document.getElementById('submitBtn').style.background = '#94a3b8';
-                document.getElementById('submitBtn').innerText = "🔒 Permanently Frozen";
                 document.querySelectorAll('.mark-input').forEach(input => input.disabled = true);
-                document.querySelectorAll('.max-editable-input').forEach(input => input.disabled = true);
+                document.querySelectorAll('.max-input').forEach(input => input.disabled = true);
             } else {
                 let firstInput = document.querySelector('.mark-input');
                 if(firstInput) { firstInput.focus(); setActiveQuestion(firstInput.id); }
