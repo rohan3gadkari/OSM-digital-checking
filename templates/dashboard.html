@@ -10,32 +10,32 @@
         body { background-color: #1a202c; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
         .navbar-custom { background-color: #2d3748; padding: 10px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         
-        /* 🏗️ लेआउट ग्रिड डिझाईन */
+        /* 🏗️ ३-कॉलम लेआउट ग्रिड संरचना */
         .sidebar-left { background-color: #2d3748; min-height: 92vh; padding: 15px 5px; }
         .sidebar-right { background-color: #ffffff; color: #333333; min-height: 92vh; padding: 20px 15px; border-left: 2px solid #cbd5e0; box-shadow: -4px 0 10px rgba(0,0,0,0.1); }
         
-        /* 📄 मध्यभागी PDF स्क्रोलिंग कंटेनर */
-        .pdf-viewer-container { background-color: #525659; height: 85vh; border-radius: 8px; border: 2px solid #4a5568; overflow-y: auto; overflow-x: hidden; padding: 10px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); position: relative; }
-        .pdf-page-wrapper { position: relative; margin-bottom: 20px; display: inline-block; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        canvas { display: block; max-width: 100%; height: auto; }
+        /* 📄 स्क्रोलिंग आन्सर शीट विभाग */
+        .pdf-viewer-container { background-color: #525659; height: 84vh; border-radius: 8px; border: 2px solid #4a5568; overflow-y: auto; overflow-x: hidden; padding: 15px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .pdf-page-wrapper { position: relative; margin: 0 auto 25px auto; display: block; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.4); text-align: center; }
+        canvas { display: block; max-width: 100%; height: auto; margin: 0 auto; }
         
-        /* 🖊️ स्टॅम्प आणि मार्किंग लेयर */
+        /* 🖊️ डिजिटल स्टॅम्प पारदर्शक पडदा */
         .annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; cursor: crosshair; }
-        .digital-stamp { position: absolute; font-size: 24px; font-weight: bold; transform: translate(-50%, -50%); z-index: 10; pointer-events: none; user-select: none; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        .digital-stamp { position: absolute; font-size: 26px; font-weight: bold; transform: translate(-50%, -50%); z-index: 10; pointer-events: none; user-select: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
         
-        /* 🔘 बटन्स स्टाईल */
+        /* 🔘 डावीकडील कंट्रोल्स आणि बटणे */
         .btn-grade { width: 42%; margin: 4px; font-weight: bold; border-radius: 6px; padding: 6px; font-size: 13px; }
         .stamp-btn { width: 42%; margin: 4px; font-weight: bold; font-size: 15px; padding: 6px; }
-        .stamp-btn.active, .btn-grade.active { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        .stamp-btn.active, .btn-grade.active { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; transform: scale(1.05); }
         .score-box { background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 18px; font-weight: bold; text-align: center; margin-top: 15px; }
         .form-control-sm, .form-select-sm { border-radius: 6px; border: 1px solid #cbd5e0; font-weight: 500; }
         
-        /* 📊 मार्किंग मॅट्रिक्स यादी */
-        .q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 4px; border-bottom: 1px solid #edf2f7; }
+        /* 📊 मॅट्रिक्स टेबल रो */
+        .q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 4px 8px; border-bottom: 1px solid #edf2f7; }
         .q-label { font-weight: 600; font-size: 13px; color: #2d3748; width: 40%; }
         .q-max { font-size: 12px; color: #e53e3e; font-weight: bold; width: 20%; text-align: center; }
         .q-input { width: 35%; text-align: center; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e0; }
-        .matrix-container { max-height: 42vh; overflow-y: auto; padding-right: 5px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; padding: 10px; }
+        .matrix-container { max-height: 40vh; overflow-y: auto; padding-right: 5px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f7fafc; padding: 8px; }
     </style>
 </head>
 <body>
@@ -144,7 +144,6 @@
         const savedStamps = JSON.parse('{{ saved_stamps|safe }}' || '[]');
         const isLocked = {{ is_locked }};
 
-        // 🚀 १. PDF चे सर्व पेजेस एकाखाली एक लोड आणि रेंडर करणे
         window.onload = function() {
             loadAllPdfPages();
 
@@ -164,12 +163,12 @@
             validateAndCalculate();
         };
 
+        // 🚀 PDF चे सर्व पेजेस एकाखाली एक रेंडर करणे
         function loadAllPdfPages() {
             const container = document.getElementById('pdf-container-list');
             
             pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
                 for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    // प्रत्येक पेजसाठी स्वतंत्र कंटेनर तयार करणे
                     let pageWrapper = document.createElement('div');
                     pageWrapper.className = 'pdf-page-wrapper';
                     pageWrapper.id = 'page-wrapper-' + pageNum;
@@ -178,7 +177,6 @@
                     canvas.id = 'canvas-page-' + pageNum;
                     pageWrapper.appendChild(canvas);
 
-                    // स्टॅम्प मारण्यासाठी पारदर्शक लेयर
                     let annotLayer = document.createElement('div');
                     annotLayer.className = 'annotation-layer';
                     annotLayer.setAttribute('data-page', pageNum);
@@ -187,7 +185,6 @@
 
                     container.appendChild(pageWrapper);
 
-                    // प्रत्यक्ष पेज रेंडरिंग चालू
                     pdf.getPage(pageNum).then(function(page) {
                         let viewport = page.getViewport({ scale: 1.3 });
                         let ctx = canvas.getContext('2d');
@@ -196,7 +193,6 @@
 
                         let renderContext = { canvasContext: ctx, viewport: viewport };
                         page.render(renderContext).promise.then(() => {
-                            // जर या पेजवर आधीचे काही स्टॅम्प्स असतील तर ते पुन्हा दाखवणे
                             savedStamps.forEach(st => {
                                 if(st.page === pageNum) {
                                     reRenderStampOnPage(pageWrapper, st.x, st.y, st.val);
@@ -216,7 +212,7 @@
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        // 🖊️ उत्तरपत्रिकेवर क्लिक केल्यावर स्टॅम्प उमटवणे
+        // 🖊️ क्लिक केलेल्या जागी स्टॅम्प उमटवणे
         function placeStampOnPaper(event, pageNum) {
             if (isLocked) return;
 
