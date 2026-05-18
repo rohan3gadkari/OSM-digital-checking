@@ -44,3 +44,315 @@
         <div>
             <span style="font-size: 11px; color: #a0aec0; display: block; font-weight: 600; text-transform: uppercase;">Subject Name:</span>
             <span id="display-subject" style="font-size: 16px; font-weight: bold; color: #f7fafc;">{{ subject_name }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary p-2">Total Sheets: {{ total_uploaded }}</span>
+            <span class="badge bg-success p-2">Checked: {{ checked_count }}</span>
+            <span class="badge bg-danger p-2">Unchecked: {{ unchecked_count }}</span>
+        </div>
+        <div>
+            <span class="badge bg-warning text-dark p-2" style="font-size: 14px;">BarCode: <strong id="current-barcode">{{ barcode }}</strong></span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            <div class="col-1 sidebar-left text-center">
+                <p class="text-uppercase font-monospace small mb-2" style="color: #cbd5e0; font-size: 11px; letter-spacing: 1px;">Status</p>
+                <button class="btn btn-danger stamp-btn" id="tool_❌" onclick="selectTool('❌')">❌</button>
+                <button class="btn btn-success stamp-btn" id="tool_✔️" onclick="selectTool('✔️')">✔️</button>
+                <hr style="border-color: #4a5568;" class="my-2">
+                <p class="text-uppercase font-monospace small mb-2" style="color: #cbd5e0; font-size: 11px; letter-spacing: 1px;">Grades</p>
+                <button class="btn btn-light btn-grade" id="tool_0" onclick="selectTool('0')">0</button>
+                <button class="btn btn-warning btn-grade" id="tool_½" onclick="selectTool('½')">½</button>
+                <button class="btn btn-light btn-grade" id="tool_1" onclick="selectTool('1')">1</button>
+                <button class="btn btn-light btn-grade" id="tool_2" onclick="selectTool('2')">2</button>
+                <button class="btn btn-light btn-grade" id="tool_3" onclick="selectTool('3')">3</button>
+                <button class="btn btn-light btn-grade" id="tool_4" onclick="selectTool('4')">4</button>
+                <button class="btn btn-light btn-grade" id="tool_5" onclick="selectTool('5')">5</button>
+                <button class="btn btn-light btn-grade" id="tool_6" onclick="selectTool('6')">6</button>
+                <button class="btn btn-light btn-grade" id="tool_7" onclick="selectTool('7')">7</button>
+                <button class="btn btn-light btn-grade" id="tool_8" onclick="selectTool('8')">8</button>
+                <button class="btn btn-light btn-grade" id="tool_9" onclick="selectTool('9')">9</button>
+                <button class="btn btn-light btn-grade" id="tool_10" onclick="selectTool('10')">10</button>
+                <button class="btn btn-secondary mt-3 btn-sm w-100" style="font-size: 10px;" onclick="clearAllMarks()">CLR MARKS</button>
+            </div>
+
+            <div class="col-8 p-3 text-center">
+                <div class="pdf-viewer-container" id="pdf-container-list">
+                    </div>
+            </div>
+
+            <div class="col-3 sidebar-right">
+                <div class="mb-2 p-2 border rounded" style="background-color: #f8fafc;">
+                    <label class="form-label small fw-bold text-dark mb-1">📤 Upload New Sheet:</label>
+                    <form action="/upload_sheet" method="POST" enctype="multipart/form-data" class="d-flex gap-1">
+                        <input type="hidden" name="subject" value="{{ subject_name }}">
+                        <input type="file" name="file" class="form-control form-control-sm" accept=".pdf" required>
+                        <button type="submit" class="btn btn-dark btn-sm">Upload</button>
+                    </form>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-dark mb-1">🗂️ Select Answer Sheet:</label>
+                    <select class="form-select form-select-sm" onchange="location = this.value;">
+                        {% for paper in all_papers %}
+                        <option value="?paper={{ paper }}&subject={{ subject_name }}" {% if paper == current_paper %}selected{% endif %}>{{ paper }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <h6 class="text-dark fw-bold mb-1" style="font-size: 12px;">📋 MARKING MATRIX (Q1 - Q7)</h6>
+                <div class="matrix-container">
+                    <div class="q-row fw-bold border-bottom pb-1 mb-2" style="color: #4a5568; font-size: 12px; background: #edf2f7; position: sticky; top: 0; z-index: 10;">
+                        <span style="width: 40%;">Q.No</span>
+                        <span style="width: 20%; text-align: center;">Max</span>
+                        <span style="width: 35%; text-align: center;">Obtained</span>
+                    </div>
+                    {% for q in structure %}
+                    <div class="q-row" id="row_{{ q.id }}">
+                        <span class="q-label">{{ q.label }}</span>
+                        <span class="q-max">{{ q.max }}</span>
+                        <input type="text" class="q-input form-control-sm" id="input_{{ q.id }}" data-max="{{ q.max }}" value="0" onfocus="setCurrentActiveInput('input_{{ q.id }}')" onchange="validateAndCalculate()">
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="score-box">
+                    Total Score: <span id="total-score-display">0</span> / {{ total_max }}
+                </div>
+
+                <button class="btn btn-primary w-100 mt-2 fw-bold" id="btn-final-submit" onclick="submitMarksToDatabase()">💾 Final Save & Submit</button>
+                <button class="btn btn-warning w-100 mt-2 fw-bold text-dark" onclick="loadNextUncheckedPaper()">⏭️ Next Answer Sheet</button>
+                <a href="/download_excel" target="_blank" class="btn btn-success w-100 mt-2 fw-bold btn-sm" style="background-color: #16a34a;">📊 Download Report (Excel)</a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let currentActiveInputId = "input_q1_1"; 
+        let selectedToolValue = "✔️"; 
+        let placedStampsArray = [];
+        const pdfUrl = "{{ url_for('static', filename='answer_sheets/' + current_paper) }}";
+
+        const globalStructure = JSON.parse('{{ structure|tojson }}');
+        const savedScores = JSON.parse('{{ saved_scores|safe }}');
+        const savedStamps = JSON.parse('{{ saved_stamps|safe }}' || '[]');
+        const isLocked = {{ is_locked }};
+
+        // 🚀 १. PDF चे सर्व पेजेस एकाखाली एक लोड आणि रेंडर करणे
+        window.onload = function() {
+            loadAllPdfPages();
+
+            if (savedScores && Object.keys(savedScores).length > 0) {
+                for (let q_id in savedScores) {
+                    let inp = document.getElementById('input_' + q_id);
+                    if (inp) inp.value = savedScores[q_id];
+                }
+            }
+
+            if (isLocked) {
+                document.getElementById('btn-final-submit').disabled = true;
+                document.getElementById('btn-final-submit').innerText = "🔒 Marks Locked";
+                document.getElementById('btn-final-submit').className = "btn btn-secondary w-100 mt-2 fw-bold";
+            }
+            selectTool('✔️');
+            validateAndCalculate();
+        };
+
+        function loadAllPdfPages() {
+            const container = document.getElementById('pdf-container-list');
+            
+            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    // प्रत्येक पेजसाठी स्वतंत्र कंटेनर तयार करणे
+                    let pageWrapper = document.createElement('div');
+                    pageWrapper.className = 'pdf-page-wrapper';
+                    pageWrapper.id = 'page-wrapper-' + pageNum;
+
+                    let canvas = document.createElement('canvas');
+                    canvas.id = 'canvas-page-' + pageNum;
+                    pageWrapper.appendChild(canvas);
+
+                    // स्टॅम्प मारण्यासाठी पारदर्शक लेयर
+                    let annotLayer = document.createElement('div');
+                    annotLayer.className = 'annotation-layer';
+                    annotLayer.setAttribute('data-page', pageNum);
+                    annotLayer.onclick = function(e) { placeStampOnPaper(e, pageNum); };
+                    pageWrapper.appendChild(annotLayer);
+
+                    container.appendChild(pageWrapper);
+
+                    // प्रत्यक्ष पेज रेंडरिंग चालू
+                    pdf.getPage(pageNum).then(function(page) {
+                        let viewport = page.getViewport({ scale: 1.3 });
+                        let ctx = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        let renderContext = { canvasContext: ctx, viewport: viewport };
+                        page.render(renderContext).promise.then(() => {
+                            // जर या पेजवर आधीचे काही स्टॅम्प्स असतील तर ते पुन्हा दाखवणे
+                            savedStamps.forEach(st => {
+                                if(st.page === pageNum) {
+                                    reRenderStampOnPage(pageWrapper, st.x, st.y, st.val);
+                                }
+                            });
+                        });
+                    });
+                }
+                placedStampsArray = savedStamps;
+            });
+        }
+
+        function selectTool(toolVal) {
+            selectedToolValue = toolVal;
+            document.querySelectorAll('.stamp-btn, .btn-grade').forEach(b => b.classList.remove('active'));
+            let activeBtn = document.getElementById('tool_' + toolVal);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        // 🖊️ उत्तरपत्रिकेवर क्लिक केल्यावर स्टॅम्प उमटवणे
+        function placeStampOnPaper(event, pageNum) {
+            if (isLocked) return;
+
+            let rect = event.target.getBoundingClientRect();
+            let x = event.clientX - rect.left;
+            let y = event.clientY - rect.top;
+
+            let wrapper = document.getElementById('page-wrapper-' + pageNum);
+            reRenderStampOnPage(wrapper, x, y, selectedToolValue);
+
+            placedStampsArray.push({ page: pageNum, x: x, y: y, val: selectedToolValue });
+
+            let inp = document.getElementById(currentActiveInputId);
+            if (inp) {
+                inp.value = selectedToolValue;
+                validateAndCalculate();
+                moveToNextInput();
+            }
+        }
+
+        function reRenderStampOnPage(wrapperElement, x, y, value) {
+            let stampEl = document.createElement('div');
+            stampEl.className = 'digital-stamp';
+            stampEl.style.left = x + 'px';
+            stampEl.style.top = y + 'px';
+            stampEl.innerText = value;
+            
+            if (value === '❌') stampEl.style.color = 'red';
+            else if (value === '✔️') stampEl.style.color = '#10b981';
+            else stampEl.style.color = '#f59e0b';
+
+            wrapperElement.appendChild(stampEl);
+        }
+
+        function setCurrentActiveInput(id) {
+            currentActiveInputId = id;
+            document.querySelectorAll('.q-row').forEach(r => r.style.backgroundColor = 'transparent');
+            let activeRow = document.getElementById('row_' + id.replace('input_', ''));
+            if (activeRow) activeRow.style.backgroundColor = '#fef08a';
+        }
+
+        function moveToNextInput() {
+            for(let i=0; i<globalStructure.length; i++) {
+                if("input_" + globalStructure[i].id === currentActiveInputId) {
+                    if(i + 1 < globalStructure.length) {
+                        let nextId = "input_" + globalStructure[i+1].id;
+                        let nextInp = document.getElementById(nextId);
+                        if(nextInp) {
+                            nextInp.focus();
+                            setCurrentActiveInput(nextId);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        function clearAllMarks() {
+            if(confirm("सर्व मार्क्स आणि स्टॅम्प्स रीसेट करायचे?")) {
+                globalStructure.forEach(q => {
+                    let inp = document.getElementById("input_" + q.id);
+                    if(inp) inp.value = "0";
+                });
+                document.querySelectorAll('.digital-stamp').forEach(el => el.remove());
+                placedStampsArray = [];
+                validateAndCalculate();
+            }
+        }
+
+        function validateAndCalculate() {
+            let grandTotal = 0;
+            globalStructure.forEach(q => {
+                let inp = document.getElementById("input_" + q.id);
+                if (inp) {
+                    let val = inp.value.trim();
+                    if (val === "✔️") {
+                        grandTotal += parseFloat(q.max);
+                    } else if (val === "❌" || val === "½") {
+                        grandTotal += (val === "½") ? 0.5 : 0;
+                    } else {
+                        let num = parseFloat(val);
+                        if (!isNaN(num)) {
+                            if (num > q.max) {
+                                alert(`${q.label} साठी कमाल ${q.max} गुण देता येतात!`);
+                                inp.value = 0;
+                                num = 0;
+                            }
+                            grandTotal += num;
+                        }
+                    }
+                }
+            });
+            document.getElementById('total-score-display').innerText = grandTotal;
+        }
+
+        function submitMarksToDatabase() {
+            let scoresData = {};
+            globalStructure.forEach(q => {
+                let inp = document.getElementById("input_" + q.id);
+                if(inp) scoresData[q.id] = inp.value;
+            });
+
+            let payload = {
+                barcode: document.getElementById('current-barcode').innerText,
+                subject: document.getElementById('display-subject').innerText,
+                paper: "{{ current_paper }}",
+                scores: scoresData,
+                stamps: placedStampsArray
+            };
+
+            fetch('/submit_marks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('गुण आणि डिजिटल स्टॅम्प यशस्वीरित्या लॉक झाले!');
+                    location.reload();
+                } else {
+                    alert('त्रुटी: ' + data.message);
+                }
+            })
+            .catch(err => alert('सबमिशन अपयशी: ' + err));
+        }
+
+        function loadNextUncheckedPaper() {
+            let selectElement = document.querySelector('.form-select-sm');
+            if (selectElement && selectElement.selectedIndex + 1 < selectElement.options.length) {
+                selectElement.selectedIndex += 1;
+                location = selectElement.value;
+            } else {
+                alert('सर्व उपलब्ध उत्तरपत्रिका तपासून पूर्ण झाल्या आहेत!');
+            }
+        }
+    </script>
+</body>
+</html>
