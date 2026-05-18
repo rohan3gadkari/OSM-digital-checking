@@ -3,61 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Permanent Storage OSM Hub</title>
+    <title>OSM Hub - Solapur University</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .top-navbar { background: #2c3e50; color: white; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; height: 55px; border-bottom: 3px solid #34495e; }
-        .subject-title-input { background: rgba(255,255,255,0.1); border: 1px dashed #cbd5e1; color: white; font-size: 14px; font-weight: bold; padding: 5px 10px; border-radius: 4px; width: 320px; }
+        
+        .top-navbar {
+            background: #2c3e50; color: white; padding: 5px 20px;
+            display: flex; justify-content: space-between; align-items: center; height: 60px;
+            border-bottom: 3px solid #34495e;
+        }
+        .subject-title-input { background: rgba(255,255,255,0.1); border: 1px dashed #cbd5e1; color: white; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px; width: 260px; }
+        
+        /* 📊 लाइव्ह स्टेटस काउंटर स्टाईल */
+        .status-counters { display: flex; gap: 10px; }
+        .counter-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; text-align: center; color: white; }
+        .bg-total { background: #3b82f6; }
+        .bg-checked { background: #10b981; }
+        .bg-unchecked { background: #ef4444; }
+
         .barcode-badge { background: #e67e22; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 13px; }
         .lock-status-banner { background: #e74c3c; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: none; }
-        .osm-container { display: flex; height: calc(100vh - 55px); overflow: hidden; background: #f1f5f9; }
         
-        /* 🎛️ की-पॅड */
-        .tool-sidebar { width: 120px; background: #1e293b; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid #0f172a; overflow-y: auto; }
+        .osm-container { display: flex; height: calc(100vh - 60px); overflow: hidden; background: #f1f5f9; }
+
+        /* 🎛️ डावा की-पॅड */
+        .tool-sidebar {
+            width: 110px; background: #1e293b; padding: 10px 4px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid #0f172a; overflow-y: auto;
+        }
         .tool-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: bold; }
-        .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
-        .circle-key { height: 40px; border-radius: 6px; border: none; background: #f8fafc; color: #1e293b; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+        
+        .circle-key {
+            height: 38px; border-radius: 6px; border: none;
+            background: #f8fafc; color: #1e293b; font-size: 13px; font-weight: 700;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
         .circle-key:hover { background: #38bdf8; color: white; }
         .wrong-key { background: #ef4444; color: white; }
         .right-key { background: #10b981; color: white; }
         .half-key { background: #f59f00; color: white; }
-        .clear-btn { background: #64748b; color: white; grid-column: span 2; height: 35px; font-size: 12px; }
+        .clear-btn { background: #64748b; color: white; grid-column: span 2; height: 32px; font-size: 11px; }
 
-        /* 📄 पीडीएफ व्ह्यूअर */
-        .pdf-viewer-container { flex: 1; background: #64748b; padding: 15px; display: flex; justify-content: center; overflow-y: auto; position: relative; }
-        .pdf-canvas { width: 100%; max-width: 850px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; position: relative; }
-        .pdf-click-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; cursor: crosshair; }
-        .live-stamped-mark { position: absolute; color: #ef4444; font-size: 22px; font-weight: 900; pointer-events: none; z-index: 50; font-family: 'Georgia', serif; transform: translate(-10%, -50%); }
+        /* 📄 पीडीएफ व्ह्यूअर स्क्रोलिंग एरिया */
+        .pdf-viewer-container { flex: 1; background: #525659; padding: 15px; display: flex; justify-content: center; overflow-y: scroll; position: relative; }
+        .pdf-canvas { width: 100%; max-width: 820px; height: 3500px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.4); position: relative; }
+        .pdf-click-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+        .pdf-object-embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 
-        /* 📊 मूल्यमापन पॅनेल */
-        .evaluation-panel { width: 350px; background: white; border-left: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; }
-        .panel-title { font-size: 12px; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; }
-        .upload-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px; }
-        .upload-form-row { display: flex; gap: 6px; align-items: center; }
+        /* 🔴 डिजिटल लाल पेन स्टँप */
+        .live-stamped-mark {
+            position: absolute; color: #ef4444; font-size: 22px; font-weight: 900;
+            pointer-events: none; z-index: 20; font-family: 'Georgia', serif;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2); transform: translate(-10%, -50%);
+        }
+
+        /* 📊 उजवा मूल्यमापन पॅनेल */
+        .evaluation-panel { width: 360px; background: white; border-left: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; }
+        .panel-title { font-size: 12px; color: #334155; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
+        
+        .upload-box { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 8px; }
+        .upload-form-row { display: flex; gap: 4px; align-items: center; }
         .file-selector { font-size: 11px; flex: 1; }
-        .upload-submit-btn { background: #34495e; color: white; border: none; padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; }
-        .table-scroll { overflow-y: auto; flex-grow: 1; max-height: calc(100vh - 420px); border: 1px solid #cbd5e1; border-radius: 6px; }
-        .marks-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
-        .marks-table th { background: #475569; color: white; padding: 8px 4px; position: sticky; top: 0; z-index: 10; }
-        .marks-table td { padding: 5px; border: 1px solid #e2e8f0; }
-        .mark-input { width: 60px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 4px; padding: 4px; font-weight: bold; }
-        .max-editable-input { width: 50px; text-align: center; border: 1.5px solid #fbcfe8; border-radius: 4px; padding: 4px; color: #b45309; font-weight: bold; }
+        .upload-submit-btn { background: #34495e; color: white; border: none; padding: 4px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+
+        /* आन्सर शीट ड्रॉपडाऊन न्यू सिलेक्शन */
+        .paper-select-box { width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: bold; margin-bottom: 10px; background: #fffbf0; }
+
+        .table-scroll { overflow-y: auto; flex-grow: 1; max-height: calc(100vh - 340px); border: 1px solid #cbd5e1; border-radius: 6px; }
+        .marks-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; }
+        .marks-table th { background: #475569; color: white; padding: 6px 4px; position: sticky; top: 0; z-index: 30; }
+        .marks-table td { padding: 5px 4px; border: 1px solid #e2e8f0; }
+        
+        .mark-input { width: 60px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 4px; padding: 3px; font-weight: bold; }
+        .max-editable-input { width: 45px; text-align: center; border: 1.5px solid #fbcfe8; border-radius: 4px; padding: 3px; color: #b45309; font-weight: bold; }
         .active-row { background: #fef08a !important; }
-        .total-box { background: #10b981; color: white; padding: 10px; border-radius: 6px; text-align: center; margin-bottom: 8px; font-size: 15px; font-weight: bold; }
-        .btn-submit { background: #2563eb; color: white; width: 100%; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-excel { background: #059669; color: white; width: 100%; padding: 8px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 12px; margin-top: 6px; }
+
+        .total-box { background: #10b981; color: white; padding: 8px; border-radius: 6px; text-align: center; margin-bottom: 6px; font-size: 14px; font-weight: bold; }
+        .button-group { display: flex; flex-direction: column; gap: 5px; }
+        .btn-submit { background: #2563eb; color: white; width: 100%; padding: 8px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-next { background: #e67e22; color: white; width: 100%; padding: 8px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; text-decoration: none; }
     </style>
 </head>
 <body>
 
     <div class="top-navbar">
         <div>
-            <span style="font-size: 11px; color: #cbd5e1; font-weight: bold;">Subject Name:</span><br>
+            <span style="font-size: 10px; color: #cbd5e1; font-weight: bold;">Subject Name:</span><br>
             <input type="text" id="subjectInputField" class="subject-title-input" value="{{ subject_name }}" oninput="syncSubjectToUploadForm()">
         </div>
+        
+        <div class="status-counters">
+            <div class="counter-badge bg-total">Total Answer Sheets: <span id="cntTotal">{{ total_uploaded }}</span></div>
+            <div class="counter-badge bg-checked">Checked: <span id="cntChecked">{{ checked_count }}</span></div>
+            <div class="counter-badge bg-unchecked">Not Checked: <span id="cntUnchecked">{{ unchecked_count }}</span></div>
+        </div>
+
         <div class="meta-container">
-            <div id="lockBanner" class="lock-status-banner">🔒 PERMANENTLY LOCKED</div>
-            <div>BarCode No: <span class="barcode-badge" id="currentBarcode">{{ barcode }}</span></div>
+            <div id="lockBanner" class="lock-status-banner">🔒 LOCKED & SUBMITTED</div>
+            <div style="font-size:12px;">BarCode: <span class="barcode-badge" id="currentBarcode">{{ barcode }}</span></div>
         </div>
     </div>
 
@@ -90,7 +135,7 @@
         <div class="pdf-viewer-container">
             <div class="pdf-canvas" id="pdfCanvasWrapper">
                 <div class="pdf-click-overlay" onclick="placeStampOnClick(event)"></div>
-                <object data="{{ url_for('static', filename='answer_sheets/' + current_paper) }}#toolbar=0&navpanes=0&scrollbar=1" type="application/pdf" width="100%" height="100%">
+                <object class="pdf-object-embed" data="{{ url_for('static', filename='answer_sheets/' + current_paper) }}#toolbar=0&navpanes=0&scrollbar=0" type="application/pdf">
                     <p>PDF लोड होऊ शकली नाही.</p>
                 </object>
             </div>
@@ -99,7 +144,7 @@
         <div class="evaluation-panel">
             <div>
                 <div class="upload-box">
-                    <label>📤 Upload Answer Sheet:</label>
+                    <label style="font-size:11px; font-weight:bold;">📤 Upload New Sheet:</label>
                     <form action="/upload_sheet" method="POST" enctype="multipart/form-data" class="upload-form-row">
                         <input type="hidden" name="subject" id="hiddenFormSubject" value="{{ subject_name }}">
                         <input type="file" name="file" accept=".pdf" class="file-selector" required>
@@ -107,7 +152,14 @@
                     </form>
                 </div>
 
-                <div class="panel-title">📋 Question Paper Marking Matrix</div>
+                <label style="font-size:11px; font-weight:bold;">📄 Select Answer Sheet:</label>
+                <select class="paper-select-box" id="paperSelectDropdown" onchange="switchAnswerSheetFile(this.value)">
+                    {% for paper in all_papers %}
+                    <option value="{{ paper }}" {% if paper == current_paper %}selected{% endif %}>{{ paper }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="panel-title">📋 Marking Matrix (Q1 - Q7)</div>
                 <div class="table-scroll">
                     <table class="marks-table">
                         <thead>
@@ -121,8 +173,8 @@
                             {% for q in structure %}
                             <tr id="row-{{ q.id }}">
                                 <td><strong>{{ q.label }}</strong></td>
-                                <td><input type="number" id="max-{{ q.id }}" class="max-editable-input" value="{{ q.max }}" min="1"></td>
-                                <td><input type="text" id="{{ q.id }}" class="mark-input" value="0" onfocus="setActiveQuestion('{{ q.id }}')" oninput="calculateLiveTotal()"></td>
+                                <td><input type="number" id="max-{{ q.id }}" class="max-editable-input" value="{{ q.max }}" min="1" oninput="calculateLiveTotal()"></td>
+                                <td><input type="text" id="{{ q.id }}" class="mark-input" value="0" onfocus="setActiveQuestion('{{ q.id }}')" readonly></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -134,8 +186,10 @@
                 <div class="total-box">
                     Total Score: <span id="liveTotal">0</span> / <span id="liveMaxTotal">{{ total_max }}</span>
                 </div>
-                <button class="btn-submit" id="submitBtn" onclick="submitMarksViaAJAX()">🔒 Final Save & Submit</button>
-                <button class="btn-excel" onclick="downloadExcelSheetReport()">📊 Download Evaluation Report (Excel)</button>
+                <div class="button-group">
+                    <button class="btn-submit" id="submitBtn" onclick="submitMarksViaAJAX()">🔒 Final Save & Submit</button>
+                    <button class="btn-next" onclick="goToNextAnswerSheet()">⏭️ Next Answer Sheet</button>
+                </div>
             </div>
         </div>
     </div>
@@ -144,7 +198,6 @@
         let activeQuestionId = '';
         let lastEnteredValue = '✔️';
         const currentBarcode = document.getElementById('currentBarcode').innerText;
-        
         const mainContainer = document.getElementById('osmMainContainer');
         const isPageLocked = mainContainer ? (mainContainer.getAttribute('data-locked') === 'true') : false;
 
@@ -152,15 +205,34 @@
             document.getElementById('hiddenFormSubject').value = document.getElementById('subjectInputField').value;
         }
 
+        function switchAnswerSheetFile(fileName) {
+            let currentSub = document.getElementById('subjectInputField').value;
+            window.location.href = `/?paper=${fileName}&subject=${currentSub}`;
+        }
+
+        // ⏭️ पुढील आन्सर शीटवर जाण्याचे लॉजिक
+        function goToNextAnswerSheet() {
+            let dropdown = document.getElementById('paperSelectDropdown');
+            let currentIndex = dropdown.selectedIndex;
+            if (currentIndex < dropdown.options.length - 1) {
+                dropdown.selectedIndex = currentIndex + 1;
+                switchAnswerSheetFile(dropdown.value);
+            } else {
+                alert("🎉 सर्व अपलोड केलेल्या उत्तरपत्रिका तपासून पूर्ण झाल्या आहेत!");
+            }
+        }
+
         function setActiveQuestion(qId) {
             if(isPageLocked) return;
             activeQuestionId = qId;
             document.querySelectorAll('.marks-table tbody tr').forEach(tr => tr.classList.remove('active-row'));
             let targetRow = document.getElementById('row-' + qId);
-            if(targetRow) targetRow.classList.add('active-row');
+            if(targetRow) {
+                targetRow.classList.add('active-row');
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
 
-        // ऑटोमॅटिक की-पॅड व्हॅल्यू भरणे (नो मॅन्युअल टायपिंग)
         function handleKeypadPress(keyVal) {
             if(isPageLocked) return;
             if (activeQuestionId) {
@@ -175,11 +247,10 @@
                     lastEnteredValue = targetInput.value;
                 }
                 
-                // लोकल स्टोरेजमध्ये तात्पुरते गुण सेव्ह करणे
                 saveCurrentStateToLocalStorage();
                 calculateLiveTotal();
             } else {
-                alert("कृपया आधी उजवीकडील टेबलमधून प्रश्न निवडा!");
+                alert("कृपया आधी टेबलमधून प्रश्न निवडा!");
             }
         }
 
@@ -188,15 +259,14 @@
 
             const wrapper = document.getElementById('pdfCanvasWrapper');
             const rect = wrapper.getBoundingClientRect();
+            
             const x = ((event.clientX - rect.left) / rect.width) * 100;
             const y = ((event.clientY - rect.top) / rect.height) * 100;
 
             createStampElement(x, y, lastEnteredValue, activeQuestionId);
-
-            // लोकल स्टोरेज अपडेट करणे
             saveCurrentStateToLocalStorage();
 
-            // पुढील प्रश्नावर ऑटो-फोकस
+            // ऑटो-फोकस शिफ्ट करणे
             let targetInput = document.getElementById(activeQuestionId);
             let allInputs = Array.from(document.querySelectorAll('.mark-input'));
             let currentIndex = allInputs.indexOf(targetInput);
@@ -218,31 +288,29 @@
             stamp.setAttribute('data-val', val);
             stamp.setAttribute('data-qid', qId);
             
-            let shortQName = qId.replace('q1_', 'Q(1.').replace('q', 'Q(') + ")";
-            stamp.innerHTML = `${val} <span style="font-size:10px; color:black; background:yellow; padding:1px 2px;">${shortQName}</span>`;
+            let cleanLabel = qId.replace('q7_', 'Q.7(').replace('_a', '(A)').replace('_b', '(B)').replace('q', 'Q.');
+            stamp.innerHTML = `${val} <span style="font-size:9px; color:black; background:yellow; padding:1px 2px; border-radius:3px;">${cleanLabel}</span>`;
             
             wrapper.appendChild(stamp);
         }
 
         function calculateLiveTotal() {
             let grandTotal = 0;
+            let maxTotal = 0;
             document.querySelectorAll('.mark-input').forEach(input => { grandTotal += parseFloat(input.value) || 0; });
+            document.querySelectorAll('.max-editable-input').forEach(input => { maxTotal += parseFloat(input.value) || 0; });
+            
             document.getElementById('liveTotal').innerText = grandTotal;
+            document.getElementById('liveMaxTotal').innerText = maxTotal;
         }
 
-        // 💾 लोकल स्टोरेज मॅनेजमेंट (तात्पुरता डेटा बॅकअप)
         function saveCurrentStateToLocalStorage() {
             let scores = {};
             document.querySelectorAll('.mark-input').forEach(input => { scores[input.id] = input.value; });
 
             let stamps = [];
             document.querySelectorAll('.live-stamped-mark').forEach(s => {
-                stamps.push({
-                    x: s.getAttribute('data-x'),
-                    y: s.getAttribute('data-y'),
-                    val: s.getAttribute('data-val'),
-                    qid: s.getAttribute('data-qid')
-                });
+                stamps.push({ x: s.getAttribute('data-x'), y: s.getAttribute('data-y'), val: s.getAttribute('data-val'), qid: s.getAttribute('data-qid') });
             });
 
             localStorage.setItem(`osm_scores_${currentBarcode}`, JSON.stringify(scores));
@@ -250,8 +318,8 @@
         }
 
         function loadStateFromLocalStorage() {
-            // १. सर्व्हर कडून आधीच सबमिट झालेले मार्क्स लोड करणे
-            let serverScores = JSON.parse('{{ saved_scores | safe }}' || '{}');
+            let serverScores = {};
+            try { serverScores = JSON.parse('{{ saved_scores | safe }}' || '{}'); } catch(e) {}
             let localScores = JSON.parse(localStorage.getItem(`osm_scores_${currentBarcode}`) || '{}');
             let finalScores = Object.keys(serverScores).length ? serverScores : localScores;
 
@@ -260,11 +328,13 @@
                 if(input) input.value = finalScores[id];
             });
 
-            // २. स्टँप्स रिस्टोर करणे
+            let serverStamps = [];
+            try { serverStamps = JSON.parse('{{ saved_stamps | safe }}' || '[]'); } catch(e) {}
             let localStamps = JSON.parse(localStorage.getItem(`osm_stamps_${currentBarcode}`) || '[]');
-            localStamps.forEach(s => {
-                createStampElement(s.x, s.y, s.val, s.qid);
-            });
+            let finalStamps = serverStamps.length ? serverStamps : localStamps;
+
+            document.querySelectorAll('.live-stamped-mark').forEach(el => el.remove());
+            finalStamps.forEach(s => { createStampElement(s.x, s.y, s.val, s.qid); });
 
             calculateLiveTotal();
         }
@@ -299,38 +369,7 @@
                     stamps: stamps
                 })
             }).then(res => res.json()).then(data => {
-                if(data.status === 'success') { 
-                    alert("🔒 गुण 'marks_db.json' मध्ये कायमचे सेव्ह झाले आहेत!"); 
-                    location.reload(); 
-                }
-            });
-        }
-
-        function downloadExcelSheetReport() {
-            let scoresPayload = {};
-            document.querySelectorAll('.mark-input').forEach(input => { scoresPayload[input.id] = input.value; });
-            
-            let dataToSend = {
-                barcode: currentBarcode,
-                subject: document.getElementById('subjectInputField').value,
-                total_score: document.getElementById('liveTotal').innerText + " / " + document.getElementById('liveMaxTotal').innerText,
-                scores: scoresPayload
-            };
-            
-            fetch('/export_excel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSend)
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                let url = window.URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = `OSM_Report_${currentBarcode}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                if(data.status === 'success') { alert("🔒 उत्तरपत्रिका यशस्वीरित्या तपासून लॉक झाली आहे!"); location.reload(); }
             });
         }
 
@@ -342,7 +381,7 @@
             if(isPageLocked) {
                 document.getElementById('lockBanner').style.display = 'block';
                 document.getElementById('submitBtn').disabled = true;
-                document.querySelectorAll('.mark-input').forEach(input => input.disabled = true);
+                document.getElementById('submitBtn').innerText = "✅ Paper Evaluated";
             }
         });
     </script>
