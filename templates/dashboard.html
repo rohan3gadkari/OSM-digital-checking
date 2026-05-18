@@ -1,222 +1,56 @@
-<script>
-        let activeQuestionId = '';
-        let lastEnteredValue = '0';
-        const currentBarcode = document.getElementById('currentBarcode').innerText;
-        const mainContainer = document.getElementById('osmMainContainer');
-        const isPageLocked = mainContainer ? (mainContainer.getAttribute('data-locked') === 'true') : false;
-
-        function syncSubjectToUploadForm() {
-            document.getElementById('hiddenFormSubject').value = document.getElementById('subjectInputField').value;
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSM Evaluation Hub</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        .top-navbar {
+            background: #2c3e50; color: white; padding: 5px 20px;
+            display: flex; justify-content: space-between; align-items: center; height: 60px;
+            border-bottom: 3px solid #34495e;
         }
+        .subject-title-input { background: rgba(255,255,255,0.1); border: 1px dashed #cbd5e1; color: white; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px; width: 260px; }
+        
+        .status-counters { display: flex; gap: 10px; }
+        .counter-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; text-align: center; color: white; }
+        .bg-total { background: #3b82f6; }
+        .bg-checked { background: #10b981; }
+        .bg-unchecked { background: #ef4444; }
 
-        function switchAnswerSheetFile(fileName) {
-            let currentSub = document.getElementById('subjectInputField').value;
-            window.location.href = `/?paper=${fileName}&subject=${currentSub}`;
+        .barcode-badge { background: #e67e22; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+        .lock-status-banner { background: #e74c3c; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; display: none; }
+        
+        .osm-container { display: flex; height: calc(100vh - 60px); overflow: hidden; background: #f1f5f9; }
+
+        /* की-पॅड */
+        .tool-sidebar {
+            width: 125px; background: #1e293b; padding: 10px 4px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid #0f172a; overflow-y: auto;
         }
-
-        function goToNextAnswerSheet() {
-            let dropdown = document.getElementById('paperSelectDropdown');
-            let currentIndex = dropdown.selectedIndex;
-            if (currentIndex < dropdown.options.length - 1) {
-                dropdown.selectedIndex = currentIndex + 1;
-                switchAnswerSheetFile(dropdown.value);
-            } else {
-                alert("🎉 सर्व उपलब्ध उत्तरपत्रिका तपासून पूर्ण झाल्या आहेत!");
-            }
+        .tool-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: bold; }
+        .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 100%; }
+        
+        .circle-key {
+            height: 38px; border-radius: 6px; border: none;
+            background: #f8fafc; color: #1e293b; font-size: 13px; font-weight: 700;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
+        .circle-key:hover { background: #38bdf8; color: white; }
+        .wrong-key { background: #ef4444; color: white; }
+        .right-key { background: #10b981; color: white; }
+        .half-key { background: #f59f00; color: white; }
+        .clear-btn { background: #64748b; color: white; grid-column: span 2; height: 32px; font-size: 11px; }
 
-        function setActiveQuestion(qId) {
-            if(isPageLocked) return;
-            activeQuestionId = qId;
-            document.querySelectorAll('.marks-table tbody tr').forEach(tr => tr.classList.remove('active-row'));
-            let targetRow = document.getElementById('row-' + qId);
-            if(targetRow) {
-                targetRow.classList.add('active-row');
-                targetRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-            lastEnteredValue = document.getElementById(qId).value;
-        }
+        /* पीडीएफ आणि ओव्हरले */
+        .pdf-viewer-container { flex: 1; background: #525659; padding: 15px; display: flex; justify-content: center; overflow-y: scroll; position: relative; }
+        .pdf-canvas { width: 100%; max-width: 820px; height: 4600px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.4); position: relative; }
+        .pdf-click-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+        .pdf-object-embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 
-        // मॅन्युअल टायपिंग व्हॅलिडेशन
-        function validateManualInput(inputEl) {
-            if(isPageLocked) return;
-            let val = parseFloat(inputEl.value) || 0;
-            let maxAllowed = parseFloat(document.getElementById('max-' + inputEl.id).value) || 0;
-            
-            if (val > maxAllowed) {
-                inputEl.value = maxAllowed;
-            }
-            lastEnteredValue = inputEl.value;
-            saveCurrentStateToLocalStorage();
-            calculateLiveTotal();
-        }
-
-        // की-पॅड सपोर्ट
-        function handleKeypadPress(keyVal) {
-            if(isPageLocked) return;
-            if (activeQuestionId) {
-                let targetInput = document.getElementById(activeQuestionId);
-                let maxAllowed = parseFloat(document.getElementById('max-' + activeQuestionId).value) || 0;
-                
-                if (keyVal === '❌') { targetInput.value = '0'; lastEnteredValue = '0'; }
-                else if (keyVal === '✔️') { targetInput.value = maxAllowed; lastEnteredValue = maxAllowed.toString(); }
-                else {
-                    let num = parseFloat(keyVal);
-                    targetInput.value = (num > maxAllowed) ? maxAllowed : keyVal;
-                    lastEnteredValue = targetInput.value;
-                }
-                saveCurrentStateToLocalStorage();
-                calculateLiveTotal();
-            }
-        }
-
-        // 🎯 पेपरवर क्लिक केल्यावर फक्त ✔️ पडेल (अंक दिसणार नाही)
-        function placeStampOnClick(event) {
-            if(isPageLocked || !activeQuestionId) return;
-
-            const wrapper = document.getElementById('pdfCanvasWrapper');
-            const rect = wrapper.getBoundingClientRect();
-            const x = ((event.clientX - rect.left) / rect.width) * 100;
-            const y = ((event.clientY - rect.top) / rect.height) * 100;
-
-            createStampElement(x, y, '✔️', activeQuestionId);
-            saveCurrentStateToLocalStorage();
-
-            // पुढच्या उपप्रश्नावर ऑटो-फोकस शिफ्ट करणे
-            let targetInput = document.getElementById(activeQuestionId);
-            let allInputs = Array.from(document.querySelectorAll('.mark-input'));
-            let currentIndex = allInputs.indexOf(targetInput);
-            if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
-                let nextInput = allInputs[currentIndex + 1];
-                nextInput.focus();
-                setActiveQuestion(nextInput.id);
-            }
-        }
-
-        function createStampElement(x, y, val, qId) {
-            const wrapper = document.getElementById('pdfCanvasWrapper');
-            const stamp = document.createElement('div');
-            stamp.className = 'live-stamped-mark';
-            stamp.style.left = x + '%';
-            stamp.style.top = y + '%';
-            stamp.setAttribute('data-x', x);
-            stamp.setAttribute('data-y', y);
-            stamp.setAttribute('data-val', val);
-            stamp.setAttribute('data-qid', qId);
-            
-            // फक्त ✔️ हे चिन्ह रेंडर करणे
-            stamp.innerHTML = `✔️`;
-            wrapper.appendChild(stamp);
-        }
-
-        function calculateLiveTotal() {
-            let grandTotal = 0;
-            let maxTotal = 0;
-            document.querySelectorAll('.mark-input').forEach(input => { grandTotal += parseFloat(input.value) || 0; });
-            document.querySelectorAll('.max-editable-input').forEach(input => { maxTotal += parseFloat(input.value) || 0; });
-            document.getElementById('liveTotal').innerText = grandTotal;
-            document.getElementById('liveMaxTotal').innerText = maxTotal;
-        }
-
-        function saveCurrentStateToLocalStorage() {
-            let scores = {};
-            document.querySelectorAll('.mark-input').forEach(input => { scores[input.id] = input.value; });
-            let stamps = [];
-            document.querySelectorAll('.live-stamped-mark').forEach(s => {
-                stamps.push({ x: s.getAttribute('data-x'), y: s.getAttribute('data-y'), val: s.getAttribute('data-val'), qid: s.getAttribute('data-qid') });
-            });
-            localStorage.setItem(`osm_scores_${currentBarcode}`, JSON.stringify(scores));
-            localStorage.setItem(`osm_stamps_${currentBarcode}`, JSON.stringify(stamps));
-        }
-
-        function loadStateFromLocalStorage() {
-            let serverScores = {};
-            try { serverScores = JSON.parse('{{ saved_scores | safe }}' || '{}'); } catch(e) {}
-            let localScores = JSON.parse(localStorage.getItem(`osm_scores_${currentBarcode}`) || '{}');
-            let finalScores = Object.keys(serverScores).length ? serverScores : localScores;
-
-            Object.keys(finalScores).forEach(id => {
-                let input = document.getElementById(id);
-                if(input) input.value = finalScores[id];
-            });
-
-            let serverStamps = [];
-            try { serverStamps = JSON.parse('{{ saved_stamps | safe }}' || '[]'); } catch(e) {}
-            let localStamps = JSON.parse(localStorage.getItem(`osm_stamps_${currentBarcode}`) || '[]');
-            let finalStamps = serverStamps.length ? serverStamps : localStamps;
-
-            document.querySelectorAll('.live-stamped-mark').forEach(el => el.remove());
-            finalStamps.forEach(s => { createStampElement(s.x, s.y, '✔️', s.qid); });
-            calculateLiveTotal();
-        }
-
-        function resetAllMarks() {
-            if(isPageLocked) return;
-            document.querySelectorAll('.mark-input').forEach(input => input.value = '0');
-            document.querySelectorAll('.live-stamped-mark').forEach(el => el.remove());
-            localStorage.removeItem(`osm_scores_${currentBarcode}`);
-            localStorage.removeItem(`osm_stamps_${currentBarcode}`);
-            calculateLiveTotal();
-        }
-
-        function submitMarksViaAJAX() {
-            if(isPageLocked) return;
-            let scores = {};
-            document.querySelectorAll('.mark-input').forEach(input => { scores[input.id] = input.value; });
-            let stamps = [];
-            document.querySelectorAll('.live-stamped-mark').forEach(s => {
-                stamps.push({ x: s.getAttribute('data-x'), y: s.getAttribute('data-y'), val: s.getAttribute('data-val'), qid: s.getAttribute('data-qid') });
-            });
-            
-            fetch('/submit_marks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    barcode: currentBarcode,
-                    paper: "{{ current_paper }}",
-                    subject: document.getElementById('subjectInputField').value,
-                    scores: scores,
-                    stamps: stamps
-                })
-            }).then(res => res.json()).then(data => {
-                if(data.status === 'success') { alert("🔒 सर्व गुण सबमिट होऊन परमनंट लॉक झाले!"); location.reload(); }
-            });
-        }
-
-        function downloadExcelSheetReport() {
-            let scoresPayload = {};
-            document.querySelectorAll('.mark-input').forEach(input => { scoresPayload[input.id] = input.value; });
-            
-            fetch('/export_excel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    barcode: currentBarcode,
-                    subject: document.getElementById('subjectInputField').value,
-                    scores: scoresPayload
-                })
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                let url = window.URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = url;
-                a.download = `OSM_Row_Matrix_${currentBarcode}.csv`;
-                document.body.appendChild(a);
-                a.click(); a.remove();
-            });
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadStateFromLocalStorage();
-            syncSubjectToUploadForm();
-            let firstInput = document.querySelector('.mark-input');
-            if(firstInput && !isPageLocked) { firstInput.focus(); setActiveQuestion(firstInput.id); }
-            if(isPageLocked) {
-                document.getElementById('lockBanner').style.display = 'block';
-                document.getElementById('submitBtn').disabled = true;
-                document.getElementById('submitBtn').innerText = "✅ Paper Evaluated";
-                document.querySelectorAll('.mark-input').forEach(inEl => inEl.readOnly = true);
-            }
-        });
-    </script>
+        /* 🎯 फक्त सिम्बॉल किंवा अंक दिसण्यासाठी स्टँप डिझाइन */
+        .live-stamped-mark {
+            position: absolute; color
