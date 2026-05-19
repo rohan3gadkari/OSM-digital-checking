@@ -16,9 +16,9 @@
         canvas { display: block; max-width: 100%; height: auto; margin: 0 auto; }
         .annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; cursor: crosshair; }
         
-        /* स्टॅम्प आणि प्रश्नाचे नाव दाखवणारी स्टाईल */
+        /* प्रगत स्टॅम्प स्टाईल */
         .digital-stamp { position: absolute; font-size: 24px; font-weight: bold; transform: translate(-20%, -50%); z-index: 10; pointer-events: none; white-space: nowrap; font-family: sans-serif; }
-        .digital-stamp span { font-size: 16px; color: #333333; font-weight: 600; margin-left: 4px; background: rgba(255, 255, 255, 0.85); padding: 1px 5px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; }
+        .digital-stamp span { font-size: 16px; color: #333333; font-weight: 600; margin-left: 4px; background: rgba(255, 255, 255, 0.9); padding: 1px 6px; border-radius: 4px; border: 1px solid #bba; vertical-align: middle; box-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
 
         .btn-grade, .stamp-btn { width: 42%; margin: 4px; font-weight: bold; }
         .stamp-btn.active, .btn-grade.active { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; }
@@ -81,7 +81,6 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-dark mb-1">🗂️ Select Answer Sheet:</label>
                     <select class="form-select form-select-sm" onchange="location = this.value;">
-                        {% endfor %}
                         {% for paper in all_papers %}
                         <option value="?paper={{ paper }}&subject={{ subject_name }}" {% if paper == current_paper %}selected{% endif %}>{{ paper }}</option>
                         {% endfor %}
@@ -168,7 +167,7 @@
                     });
                 }
                 placedStampsArray = savedStamps;
-            }).catch(err => console.log("PDF Error"));
+            }).catch(err => console.log("PDF loading status error"));
         }
 
         function selectTool(toolVal) {
@@ -178,7 +177,6 @@
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        // [SMART LABEL STAMPING] पेपरवर नाव आणि स्टॅम्प उमटवणे
         function placeStampOnPaper(event, pageNum) {
             if (isLocked) return;
             let rect = event.target.getBoundingClientRect();
@@ -189,15 +187,14 @@
             let currentInp = document.getElementById(currentActiveInputId);
             if (currentInp) {
                 let maxAllowed = parseFloat(currentInp.getAttribute('data-max'));
-                let qLabel = currentInp.getAttribute('data-label'); // प्रश्नाचे नाव (उदा. Q.2(a))
+                let qLabel = currentInp.getAttribute('data-label'); 
                 let numericCheck = parseFloat(selectedToolValue);
                 
                 if (!isNaN(numericCheck) && numericCheck > maxAllowed) {
-                    alert(`या प्रश्नाला कमाल ${maxAllowed} गुण देता येतील!`);
+                    alert(`या प्रश्नाची कमाल गुण मर्यादा फक्त ${maxAllowed} आहे!`);
                     return;
                 }
                 
-                // स्क्रीनवर स्टॅम्प लावताना कन्सामध्ये प्रश्नाचे नाव पाठवणे
                 reRenderStampOnPage(wrapper, x, y, selectedToolValue, qLabel);
                 placedStampsArray.push({ page: pageNum, x: x, y: y, val: selectedToolValue, lbl: qLabel });
 
@@ -207,18 +204,14 @@
             }
         }
 
-        // स्टॅम्पसोबत टेक्स्ट रेंडर करण्याचे लॉजिक (जसे स्क्रीनशॉटमध्ये आहे)
         function reRenderStampOnPage(wrapperElement, x, y, value, label) {
             let stampEl = document.createElement('div');
             stampEl.className = 'digital-stamp';
             stampEl.style.left = x + 'px'; 
             stampEl.style.top = y + 'px';
             
-            // कलर कोडींग
             let mainColor = (value === '❌') ? 'red' : (value === '✔️') ? '#10b981' : '#f59e0b';
-            
-            // HTML स्ट्रक्चर तयार केले: [स्टॅम्प चिन्ह/मार्क] + [कंसामध्ये प्रश्नाचे नाव]
-            stampEl.innerHTML = `<span style="color: ${mainColor};">${value}</span><span>${label}</span>`;
+            stampEl.innerHTML = `<span style="color: ${mainColor};">${value}</span><span>Q(${label.replace('Q.', '')})</span>`;
             wrapperElement.appendChild(stampEl);
         }
 
@@ -249,7 +242,7 @@
         }
 
         function clearAllMarks() {
-            if(confirm("सर्व मूल्यांकने रिसेट करायची आहेत का?")) {
+            if(confirm("सर्व मूल्यांकन आणि स्टॅम्प रिसेट करायचे आहेत का?")) {
                 globalStructure.forEach(q => { document.getElementById("input_" + q.id).value = "0"; });
                 document.querySelectorAll('.digital-stamp').forEach(el => el.remove());
                 placedStampsArray = []; 
@@ -289,7 +282,7 @@
                     stamps: placedStampsArray
                 })
             })
-            .then(res => res.json()).then(data => { if(data.status === 'success') { alert('गुण यशस्वीरीत्या लॉक केले गेले आहेत!'); location.reload(); } });
+            .then(res => res.json()).then(data => { if(data.status === 'success') { alert('गुण यशस्वीरीत्या सेव्ह आणि लॉक केले गेले आहेत!'); location.reload(); } });
         }
     </script>
 </body>
