@@ -4,7 +4,7 @@ import io
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from werkzeug.utils import secure_filename
 
-# Pandas फक्त गरज असेल तेव्हाच लोड होईल, ज्यामुळे स्टार्टअप फास्ट होईल
+# Pandas लायब्ररी मेमरी आणि स्टार्टअप सुरक्षिततेसाठी रनटाइमला लोड केली जाईल
 try:
     import pandas as pd
 except ImportError:
@@ -12,7 +12,7 @@ except ImportError:
 
 app = Flask(__name__)
 
-# अपलोड फोल्डरचा पाथ व्याख्या
+# अपलोड फोल्डरचा पाथ कॉन्फिगर केला
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'answer_sheets')
 
 DB_FILE = "permanent_db.json"
@@ -37,7 +37,7 @@ def save_permanent_db(data):
 def index():
     subject_name = request.args.get('subject', 'Basics of Electric Vehicle')
     
-    # युझर आल्यावर खात्रीशीर फोल्डर निर्मिती
+    # युझर आल्यावर सुरक्षितपणे फोल्डर तयार करणे
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     try:
@@ -50,7 +50,7 @@ def index():
         
     current_paper = request.args.get('paper', all_papers[0])
     
-    # Q1 ते Q7 चा पूर्ण आराखडा
+    # Q1 ते Q7 चा पूर्ण अचूक आराखडा आणि कमाल गुण (Max Marks)
     structure = [
         {"id": "q1_1", "label": "Q.1 (1)", "max": 1},
         {"id": "q1_2", "label": "Q.1 (2)", "max": 1},
@@ -82,6 +82,7 @@ def index():
     total_max = sum(q["max"] for q in structure)
     db = load_permanent_db()
     
+    # पेपरच्या नावानुसार युनिक बारकोड सेट करणे
     barcode = "29008603" if "Fm" in current_paper else "25493362"
     
     saved_scores = db.get("data", {}).get(barcode, {}).get("scores", {})
@@ -151,7 +152,7 @@ def download_excel():
     all_data = db.get("data", {})
     
     if not all_data:
-        return "कोणतीही नोंद सापडली नाही.", 400
+        return "कोणतीही मूल्यांकन नोंद सापडली नाही.", 400
 
     rows = []
     for barcode, info in all_data.items():
