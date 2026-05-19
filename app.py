@@ -39,7 +39,6 @@ def index():
         
     current_paper = request.args.get('paper', all_papers[0])
     
-    # रचना अधिक सोपी केली (Label मुळे स्टॅम्पवर नाव दाखवणे सोपे होईल)
     structure = [
         {"id": "q1_1", "label": "Q.1(1)", "max": 1},
         {"id": "q1_2", "label": "Q.1(2)", "max": 1},
@@ -116,3 +115,41 @@ def submit_marks():
             "subject": data['subject'],
             "paper": data['paper'],
             "scores": data['scores'],
+            "stamps": data.get('stamps', [])
+        }
+        if barcode not in db["locked"]:
+            db["locked"].append(barcode)
+        save_permanent_db(db)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/download_excel')
+def download_excel():
+    try:
+        import pandas as pd
+    except ImportError:
+        return "Pandas library error on server", 500
+        
+    db = load_permanent_db()
+    all_data = db.get("data", {})
+    if not all_data:
+        return "No records found.", 400
+
+    rows = []
+    for barcode, info in all_data.items():
+        row_dict = {"Barcode": barcode, "Subject": info.get("subject", ""), "Paper Name": info.get("paper", ""), "Status": "Locked" if barcode in db.get("locked", []) else "Unchecked"}
+        scores = info.get("scores", {})
+        for q_id, score in scores.items():
+            row_dict[q_id.replace("input_", "").upper()] = score
+        rows.append(row_dict)
+
+    df = pd.DataFrame(rows)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Evaluation Report')
+    output.seek(0)
+    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="OSM_Final_Report.xlsx")
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
