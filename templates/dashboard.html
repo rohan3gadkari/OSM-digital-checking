@@ -19,7 +19,7 @@
         .btn-grade, .stamp-btn { width: 42%; margin: 4px; font-weight: bold; }
         .stamp-btn.active, .btn-grade.active { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; }
         .score-box { background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 18px; font-weight: bold; text-align: center; margin-top: 15px; }
-        .q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 4px 8px; border-bottom: 1px solid #edf2f7; }
+        .q-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 4px 8px; border-bottom: 1px solid #edf2f7; border-radius: 4px; transition: background-color 0.2s ease; }
         .q-label { font-weight: 600; font-size: 13px; color: #2d3748; width: 40%; }
         .q-max { font-size: 12px; color: #e53e3e; font-weight: bold; width: 20%; text-align: center; }
         .q-input { width: 35%; text-align: center; font-weight: bold; }
@@ -27,3 +27,258 @@
     </style>
 </head>
 <body>
+
+    <div class="navbar-custom d-flex justify-content-between align-items-center">
+        <div>
+            <span style="font-size: 11px; color: #a0aec0; display: block; font-weight: 600;">SUBJECT NAME:</span>
+            <span id="display-subject" style="font-size: 16px; font-weight: bold; color: #f7fafc;">{{ subject_name }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary p-2">Total Sheets: {{ total_uploaded }}</span>
+            <span class="badge bg-success p-2">Checked: {{ checked_count }}</span>
+            <span class="badge bg-danger p-2">Not Checked: {{ unchecked_count }}</span>
+        </div>
+        <div>
+            <span class="badge bg-warning text-dark p-2" style="font-size: 14px;">BarCode: <strong id="current-barcode">{{ barcode }}</strong></span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            <div class="col-1 sidebar-left text-center">
+                <p class="text-uppercase small mb-2 text-white-50" style="font-size: 11px;">Status</p>
+                <button class="btn btn-danger stamp-btn" id="tool_❌" onclick="selectTool('❌')">❌</button>
+                <button class="btn btn-success stamp-btn" id="tool_✔️" onclick="selectTool('✔️')">✔️</button>
+                <hr style="border-color: #4a5568;">
+                <p class="text-uppercase small mb-2 text-white-50" style="font-size: 11px;">Grades</p>
+                <button class="btn btn-light btn-grade" id="tool_0" onclick="selectTool('0')">0</button>
+                <button class="btn btn-warning btn-grade" id="tool_½" onclick="selectTool('½')">½</button>
+                {% for i in range(1, 11) %}
+                <button class="btn btn-light btn-grade" id="tool_{{ i }}" onclick="selectTool('{{ i }}')">{{ i }}</button>
+                {% endfor %}
+                <button class="btn btn-secondary mt-3 btn-sm w-100" onclick="clearAllMarks()">CLR MARKS</button>
+            </div>
+
+            <div class="col-8 p-3 text-center">
+                <div class="pdf-viewer-container" id="pdf-container-list"></div>
+            </div>
+
+            <div class="col-3 sidebar-right">
+                <div class="mb-3 p-2 border rounded bg-light">
+                    <label class="form-label small fw-bold text-dark mb-1">📤 Upload New Sheet (PDF):</label>
+                    <form action="/upload_sheet" method="POST" enctype="multipart/form-data" class="d-flex gap-1">
+                        <input type="hidden" name="subject" value="{{ subject_name }}">
+                        <input type="file" name="file" class="form-control form-control-sm" accept=".pdf" required>
+                        <button type="submit" class="btn btn-dark btn-sm">Upload</button>
+                    </form>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">🗂️ Select Answer Sheet:</label>
+                    <select class="form-select form-select-sm" onchange="location = this.value;">
+                        {% for paper in all_papers %}
+                        <option value="?paper={{ paper }}&subject={{ subject_name }}" {% if paper == current_paper %}selected{% endif %}>{{ paper }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <h6 class="text-dark fw-bold mb-2" style="font-size: 12px;">📋 MARKING MATRIX (Q1 - Q7)</h6>
+                <div class="matrix-container">
+                    {% for q in structure %}
+                    <div class="q-row" id="row_{{ q.id }}">
+                        <span class="q-label">{{ q.label }}</span>
+                        <span class="q-max">{{ q.max }}</span>
+                        <input type="text" class="q-input form-control-sm text-center fw-bold" id="input_{{ q.id }}" data-max="{{ q.max }}" value="0" onfocus="setCurrentActiveInput('input_{{ q.id }}')" onchange="validateAndCalculate()">
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="score-box">Total Score: <span id="total-score-display">0</span> / {{ total_max }}</div>
+                <button class="btn btn-primary w-100 mt-3 fw-bold" id="btn-final-submit" onclick="submitMarksToDatabase()"> Final Save & Submit</button>
+                <a href="/download_excel" target="_blank" class="btn btn-success w-100 mt-2 fw-bold">📊 Download Report (.xlsx)</a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let currentActiveInputId = "input_q1_1"; 
+        let selectedToolValue = "✔️"; 
+        let placedStampsArray = [];
+        const pdfUrl = "{{ url_for('static', filename='answer_sheets/' + current_paper) }}";
+
+        const globalStructure = JSON.parse('{{ structure|tojson }}');
+        const savedScores = JSON.parse('{{ saved_scores|safe }}' || '{}');
+        const savedStamps = JSON.parse('{{ saved_stamps|safe }}' || '[]');
+        const isLocked = {{ is_locked }};
+
+        window.onload = function() {
+            loadAllPdfPages();
+            if (savedScores) {
+                for (let q_id in savedScores) {
+                    let inp = document.getElementById('input_' + q_id);
+                    if (inp) inp.value = savedScores[q_id];
+                }
+            }
+            if (isLocked) {
+                let btn = document.getElementById('btn-final-submit');
+                btn.disabled = true; btn.innerText = "🔒 Marks Locked"; btn.className = "btn btn-secondary w-100 mt-3";
+            }
+            setCurrentActiveInput(currentActiveInputId);
+            selectTool('✔️');
+            validateAndCalculate();
+        };
+
+        function loadAllPdfPages() {
+            const container = document.getElementById('pdf-container-list');
+            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    let pageWrapper = document.createElement('div');
+                    pageWrapper.className = 'pdf-page-wrapper';
+                    pageWrapper.id = 'page-wrapper-' + pageNum;
+
+                    let canvas = document.createElement('canvas');
+                    pageWrapper.appendChild(canvas);
+
+                    let annotLayer = document.createElement('div');
+                    annotLayer.className = 'annotation-layer';
+                    annotLayer.onclick = function(e) { placeStampOnPaper(e, pageNum); };
+                    pageWrapper.appendChild(annotLayer);
+
+                    container.appendChild(pageWrapper);
+
+                    pdf.getPage(pageNum).then(function(page) {
+                        let viewport = page.getViewport({ scale: 1.3 });
+                        let ctx = canvas.getContext('2d');
+                        canvas.height = viewport.height; canvas.width = viewport.width;
+                        
+                        page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => {
+                            savedStamps.forEach(st => {
+                                if(st.page === pageNum) reRenderStampOnPage(pageWrapper, st.x, st.y, st.val);
+                            });
+                        });
+                    });
+                }
+                placedStampsArray = savedStamps;
+            }).catch(err => console.log("PDF लोड करताना अडचण आली."));
+        }
+
+        function selectTool(toolVal) {
+            selectedToolValue = toolVal;
+            document.querySelectorAll('.stamp-btn, .btn-grade').forEach(b => b.classList.remove('active'));
+            let activeBtn = document.getElementById('tool_' + toolVal);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        // [AUTOMATIC FEEL CONTROL] क्लिक केल्यावर स्टॅम्प लावणे, मार्क्स भरणे आणि पुढे जाणे
+        function placeStampOnPaper(event, pageNum) {
+            if (isLocked) return;
+            let rect = event.target.getBoundingClientRect();
+            let x = event.clientX - rect.left; let y = event.clientY - rect.top;
+            let wrapper = document.getElementById('page-wrapper-' + pageNum);
+            
+            reRenderStampOnPage(wrapper, x, y, selectedToolValue);
+            placedStampsArray.push({ page: pageNum, x: x, y: y, val: selectedToolValue });
+
+            let currentInp = document.getElementById(currentActiveInputId);
+            if (currentInp) {
+                let maxAllowed = parseFloat(currentInp.getAttribute('data-max'));
+                let numericCheck = parseFloat(selectedToolValue);
+                
+                if (!isNaN(numericCheck) && numericCheck > maxAllowed) {
+                    alert(`या प्रश्नाचे कमाल गुण मर्यादा ${maxAllowed} आहे!`);
+                    return;
+                }
+                
+                currentInp.value = selectedToolValue;
+                validateAndCalculate();
+                moveToNextInput();
+            }
+        }
+
+        function reRenderStampOnPage(wrapperElement, x, y, value) {
+            let stampEl = document.createElement('div');
+            stampEl.className = 'digital-stamp';
+            stampEl.style.left = x + 'px'; stampEl.style.top = y + 'px';
+            stampEl.innerText = value;
+            stampEl.style.color = (value === '❌') ? 'red' : (value === '✔️') ? '#10b981' : '#f59e0b';
+            wrapperElement.appendChild(stampEl);
+        }
+
+        // चालू इनपुट हायलाईट करणे आणि ऑटो-स्क्रोल करणे
+        function setCurrentActiveInput(id) {
+            currentActiveInputId = id;
+            document.querySelectorAll('.q-row').forEach(r => r.style.backgroundColor = 'transparent');
+            let cleanId = id.replace('input_', '');
+            let activeRow = document.getElementById('row_' + cleanId);
+            if (activeRow) {
+                activeRow.style.backgroundColor = '#fef08a';
+                activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // ऑटो-ऍडव्हान्स (Auto-Advance टू नेक्स्ट इनपुट बॉक्स)
+        function moveToNextInput() {
+            for(let i=0; i<globalStructure.length; i++) {
+                if("input_" + globalStructure[i].id === currentActiveInputId) {
+                    if(i + 1 < globalStructure.length) {
+                        let nextId = "input_" + globalStructure[i+1].id;
+                        let nextInp = document.getElementById(nextId);
+                        if(nextInp) {
+                            setCurrentActiveInput(nextId);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        function clearAllMarks() {
+            if(confirm("सर्व मूल्यांकने रिसेट करायची आहेत का?")) {
+                globalStructure.forEach(q => { document.getElementById("input_" + q.id).value = "0"; });
+                document.querySelectorAll('.digital-stamp').forEach(el => el.remove());
+                placedStampsArray = []; 
+                setCurrentActiveInput("input_q1_1");
+                validateAndCalculate();
+            }
+        }
+
+        function validateAndCalculate() {
+            let grandTotal = 0;
+            globalStructure.forEach(q => {
+                let inp = document.getElementById("input_" + q.id);
+                if (inp) {
+                    let val = inp.value.trim();
+                    if (val === "✔️") grandTotal += parseFloat(q.max);
+                    else if (val === "½") grandTotal += 0.5;
+                    else if (val !== "❌" && !isNaN(parseFloat(val))) {
+                        grandTotal += parseFloat(val);
+                    }
+                }
+            });
+            document.getElementById('total-score-display').innerText = grandTotal;
+        }
+
+        function submitMarksToDatabase() {
+            let scoresData = {};
+            globalStructure.forEach(q => { scoresData[q.id] = document.getElementById("input_" + q.id).value; });
+            
+            fetch('/submit_marks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    barcode: document.getElementById('current-barcode').innerText,
+                    subject: document.getElementById('display-subject').innerText,
+                    paper: "{{ current_paper }}",
+                    scores: scoresData,
+                    stamps: placedStampsArray
+                })
+            })
+            .then(res => res.json()).then(data => { if(data.status === 'success') { alert('गुण यशस्वीरीत्या लॉक केले गेले आहेत!'); location.reload(); } });
+        }
+    </script>
+</body>
+</html>
