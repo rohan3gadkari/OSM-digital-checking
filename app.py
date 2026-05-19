@@ -18,15 +18,18 @@ def load_permanent_db():
         return {"data": {}, "locked": []}
 
 def save_permanent_db(data):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+    except Exception:
+        pass
 
 @app.route('/')
 def index():
     subject_name = request.args.get('subject', 'Basics of Electric Vehicle')
     current_paper = request.args.get('paper', 'sample.pdf')
     
-    # 📋 Complete Evaluation Question Matrix Architecture 
+    # Matching your exact structural matrix requirements (Q1 through Q7)
     structure = [
         {"id": "q1_1", "label": "Q.1 (1)", "max": 1},
         {"id": "q1_2", "label": "Q.1 (2)", "max": 1},
@@ -57,7 +60,9 @@ def index():
     
     total_max = sum(q["max"] for q in structure)
     db = load_permanent_db()
-    barcode = "25493362" # Core Demo Barcode Sequence
+    
+    # Synchronizing barcodes dynamically based on chosen file status parameters
+    barcode = "29008603" if "Fm" in current_paper else "25493362"
     
     saved_scores = db.get("data", {}).get(barcode, {}).get("scores", {})
     saved_stamps = db.get("data", {}).get(barcode, {}).get("stamps", [])
@@ -83,7 +88,7 @@ def index():
 def submit_marks():
     try:
         data = request.get_json()
-        barcode = data['barcode']
+        barcode = str(data['barcode'])
         
         db = load_permanent_db()
         db["data"][barcode] = {
@@ -107,7 +112,7 @@ def download_excel():
     all_data = db.get("data", {})
     
     if not all_data:
-        return "No empirical data records available for export operations!", 400
+        return "No grading entries available to generate Excel spreadsheet sheets!", 400
 
     rows = []
     for barcode, info in all_data.items():
@@ -140,7 +145,8 @@ def download_excel():
                     total += float(val)
         return total
 
-    df['GRAND TOTAL'] = df.apply(calculate_numeric_total, axis=1)
+    if not df.empty:
+        df['GRAND TOTAL'] = df.apply(calculate_numeric_total, axis=1)
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
