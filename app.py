@@ -1,13 +1,18 @@
 import os
 import json
 import io
-import pandas as pd
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from werkzeug.utils import secure_filename
 
+# Pandas फक्त गरज असेल तेव्हाच लोड होईल, ज्यामुळे स्टार्टअप फास्ट होईल
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
 app = Flask(__name__)
 
-# सुरक्षेसाठी फोल्डरचा पाथ कॉन्फिगर केला (ग्लोबल लेव्हलला थेट फोल्डर तयार करणे टाळले आहे)
+# अपलोड फोल्डरचा पाथ व्याख्या
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'answer_sheets')
 
 DB_FILE = "permanent_db.json"
@@ -32,7 +37,7 @@ def save_permanent_db(data):
 def index():
     subject_name = request.args.get('subject', 'Basics of Electric Vehicle')
     
-    # युझर पेजवर आल्यावर फोल्डर अस्तित्वात असल्याची खात्री केली जाते
+    # युझर आल्यावर खात्रीशीर फोल्डर निर्मिती
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     try:
@@ -45,7 +50,7 @@ def index():
         
     current_paper = request.args.get('paper', all_papers[0])
     
-    # प्रश्नपत्रिका आराखडा (Q1 ते Q7)
+    # Q1 ते Q7 चा पूर्ण आराखडा
     structure = [
         {"id": "q1_1", "label": "Q.1 (1)", "max": 1},
         {"id": "q1_2", "label": "Q.1 (2)", "max": 1},
@@ -77,7 +82,6 @@ def index():
     total_max = sum(q["max"] for q in structure)
     db = load_permanent_db()
     
-    # पेपरनुसार अचूक बारकोड सेट केला (ऋण संख्या त्रुटी टाळण्यासाठी)
     barcode = "29008603" if "Fm" in current_paper else "25493362"
     
     saved_scores = db.get("data", {}).get(barcode, {}).get("scores", {})
@@ -140,11 +144,14 @@ def submit_marks():
 
 @app.route('/download_excel')
 def download_excel():
+    if pd is None:
+        return "सर्व्हरवर Pandas लायब्ररी उपलब्ध नाही.", 500
+        
     db = load_permanent_db()
     all_data = db.get("data", {})
     
     if not all_data:
-        return "No entries logged yet.", 400
+        return "कोणतीही नोंद सापडली नाही.", 400
 
     rows = []
     for barcode, info in all_data.items():
@@ -194,6 +201,5 @@ def download_excel():
     )
 
 if __name__ == '__main__':
-    # मेन रनर चालू झाल्यावर सुरक्षितपणे डिरेक्टरी तयार केली जाते
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=False)
