@@ -2,9 +2,15 @@ import os
 import json
 import io
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+# Configure upload path variables safely within the static layout space
+UPLOAD_FOLDER = os.path.join('static', 'answer_sheets')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 DB_FILE = "permanent_db.json"
 
@@ -27,9 +33,15 @@ def save_permanent_db(data):
 @app.route('/')
 def index():
     subject_name = request.args.get('subject', 'Basics of Electric Vehicle')
-    current_paper = request.args.get('paper', 'sample.pdf')
     
-    # Matching your exact structural matrix requirements (Q1 through Q7)
+    # Read files dynamically from the static folder to keep dropdown updated
+    all_papers = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if f.lower().endswith('.pdf')]
+    if not all_papers:
+        all_papers = ['sample.pdf', 'Fm practical.pdf']
+        
+    current_paper = request.args.get('paper', all_papers[0])
+    
+    # Structural definition matching Q1 through Q7 requirements
     structure = [
         {"id": "q1_1", "label": "Q.1 (1)", "max": 1},
         {"id": "q1_2", "label": "Q.1 (2)", "max": 1},
@@ -61,8 +73,8 @@ def index():
     total_max = sum(q["max"] for q in structure)
     db = load_permanent_db()
     
-    # Synchronizing barcodes dynamically based on chosen file status parameters
-    barcode = "29008603" if "Fm" in current_paper else "25493362"
+    # Generate unique pseudo barcode metrics based on structural name hashes
+    barcode = str(abs(hash(current_paper)) % 100000000)
     
     saved_scores = db.get("data", {}).get(barcode, {}).get("scores", {})
     saved_stamps = db.get("data", {}).get(barcode, {}).get("stamps", [])
@@ -73,16 +85,32 @@ def index():
         subject_name=subject_name,
         current_paper=current_paper,
         barcode=barcode,
-        total_uploaded=2,
+        total_uploaded=len(all_papers),
         checked_count=len(db.get("locked", [])),
-        unchecked_count=max(0, 2 - len(db.get("locked", []))),
-        all_papers=['sample.pdf', 'Fm practical.pdf'],
+        unchecked_count=max(0, len(all_papers) - len(db.get("locked", []))),
+        all_papers=all_papers,
         structure=structure,
         total_max=total_max,
         saved_scores=saved_scores,
         saved_stamps=json.dumps(saved_stamps),
         is_locked=is_locked
     )
+
+# ⭐ MISSING ROUTE FIX: Handle PDF evaluation document additions seamlessly
+@app.route('/upload_sheet', methods=['POST'])
+def upload_sheet():
+    if 'file' not in request.files:
+        return redirect(request.referrer or url_for('index'))
+    
+    file = request.files['file']
+    subject = request.form.get('subject', 'Basics of Electric Vehicle')
+    
+    if file and file.filename.lower().endswith('.pdf'):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return redirect(url_for('index', paper=filename, subject=subject))
+        
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/submit_marks', methods=['POST'])
 def submit_marks():
@@ -112,7 +140,7 @@ def download_excel():
     all_data = db.get("data", {})
     
     if not all_data:
-        return "No grading entries available to generate Excel spreadsheet sheets!", 400
+        return "No grading records found to compile database spreadsheet frames.", 400
 
     rows = []
     for barcode, info in all_data.items():
