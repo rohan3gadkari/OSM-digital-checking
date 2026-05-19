@@ -15,7 +15,11 @@
         .pdf-page-wrapper { position: relative; margin: 0 auto 25px auto; display: block; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
         canvas { display: block; max-width: 100%; height: auto; margin: 0 auto; }
         .annotation-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; cursor: crosshair; }
-        .digital-stamp { position: absolute; font-size: 26px; font-weight: bold; transform: translate(-50%, -50%); z-index: 10; pointer-events: none; }
+        
+        /* स्टॅम्प आणि प्रश्नाचे नाव दाखवणारी स्टाईल */
+        .digital-stamp { position: absolute; font-size: 24px; font-weight: bold; transform: translate(-20%, -50%); z-index: 10; pointer-events: none; white-space: nowrap; font-family: sans-serif; }
+        .digital-stamp span { font-size: 16px; color: #333333; font-weight: 600; margin-left: 4px; background: rgba(255, 255, 255, 0.85); padding: 1px 5px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; }
+
         .btn-grade, .stamp-btn { width: 42%; margin: 4px; font-weight: bold; }
         .stamp-btn.active, .btn-grade.active { border: 2px solid #3b82f6; box-shadow: 0 0 10px #3b82f6; }
         .score-box { background-color: #10b981; color: white; padding: 12px; border-radius: 8px; font-size: 18px; font-weight: bold; text-align: center; margin-top: 15px; }
@@ -77,19 +81,20 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-dark mb-1">🗂️ Select Answer Sheet:</label>
                     <select class="form-select form-select-sm" onchange="location = this.value;">
+                        {% endfor %}
                         {% for paper in all_papers %}
                         <option value="?paper={{ paper }}&subject={{ subject_name }}" {% if paper == current_paper %}selected{% endif %}>{{ paper }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <h6 class="text-dark fw-bold mb-2" style="font-size: 12px;">📋 MARKING MATRIX (Q1 - Q7)</h6>
+                <h6 class="text-dark fw-bold mb-2" style="font-size: 12px;">📋 MARKING MATRIX</h6>
                 <div class="matrix-container">
                     {% for q in structure %}
                     <div class="q-row" id="row_{{ q.id }}">
-                        <span class="q-label">{{ q.label }}</span>
+                        <span class="q-label" id="label_{{ q.id }}">{{ q.label }}</span>
                         <span class="q-max">{{ q.max }}</span>
-                        <input type="text" class="q-input form-control-sm text-center fw-bold" id="input_{{ q.id }}" data-max="{{ q.max }}" value="0" onfocus="setCurrentActiveInput('input_{{ q.id }}')" onchange="validateAndCalculate()">
+                        <input type="text" class="q-input form-control-sm text-center fw-bold" id="input_{{ q.id }}" data-label="{{ q.label }}" data-max="{{ q.max }}" value="0" onfocus="setCurrentActiveInput('input_{{ q.id }}')" onchange="validateAndCalculate()">
                     </div>
                     {% endfor %}
                 </div>
@@ -157,13 +162,13 @@
                         
                         page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => {
                             savedStamps.forEach(st => {
-                                if(st.page === pageNum) reRenderStampOnPage(pageWrapper, st.x, st.y, st.val);
+                                if(st.page === pageNum) reRenderStampOnPage(pageWrapper, st.x, st.y, st.val, st.lbl);
                             });
                         });
                     });
                 }
                 placedStampsArray = savedStamps;
-            }).catch(err => console.log("PDF लोड करताना अडचण आली."));
+            }).catch(err => console.log("PDF Error"));
         }
 
         function selectTool(toolVal) {
@@ -173,42 +178,50 @@
             if (activeBtn) activeBtn.classList.add('active');
         }
 
-        // [AUTOMATIC FEEL CONTROL] क्लिक केल्यावर स्टॅम्प लावणे, मार्क्स भरणे आणि पुढे जाणे
+        // [SMART LABEL STAMPING] पेपरवर नाव आणि स्टॅम्प उमटवणे
         function placeStampOnPaper(event, pageNum) {
             if (isLocked) return;
             let rect = event.target.getBoundingClientRect();
-            let x = event.clientX - rect.left; let y = event.clientY - rect.top;
+            let x = event.clientX - rect.left; 
+            let y = event.clientY - rect.top;
             let wrapper = document.getElementById('page-wrapper-' + pageNum);
             
-            reRenderStampOnPage(wrapper, x, y, selectedToolValue);
-            placedStampsArray.push({ page: pageNum, x: x, y: y, val: selectedToolValue });
-
             let currentInp = document.getElementById(currentActiveInputId);
             if (currentInp) {
                 let maxAllowed = parseFloat(currentInp.getAttribute('data-max'));
+                let qLabel = currentInp.getAttribute('data-label'); // प्रश्नाचे नाव (उदा. Q.2(a))
                 let numericCheck = parseFloat(selectedToolValue);
                 
                 if (!isNaN(numericCheck) && numericCheck > maxAllowed) {
-                    alert(`या प्रश्नाचे कमाल गुण मर्यादा ${maxAllowed} आहे!`);
+                    alert(`या प्रश्नाला कमाल ${maxAllowed} गुण देता येतील!`);
                     return;
                 }
                 
+                // स्क्रीनवर स्टॅम्प लावताना कन्सामध्ये प्रश्नाचे नाव पाठवणे
+                reRenderStampOnPage(wrapper, x, y, selectedToolValue, qLabel);
+                placedStampsArray.push({ page: pageNum, x: x, y: y, val: selectedToolValue, lbl: qLabel });
+
                 currentInp.value = selectedToolValue;
                 validateAndCalculate();
                 moveToNextInput();
             }
         }
 
-        function reRenderStampOnPage(wrapperElement, x, y, value) {
+        // स्टॅम्पसोबत टेक्स्ट रेंडर करण्याचे लॉजिक (जसे स्क्रीनशॉटमध्ये आहे)
+        function reRenderStampOnPage(wrapperElement, x, y, value, label) {
             let stampEl = document.createElement('div');
             stampEl.className = 'digital-stamp';
-            stampEl.style.left = x + 'px'; stampEl.style.top = y + 'px';
-            stampEl.innerText = value;
-            stampEl.style.color = (value === '❌') ? 'red' : (value === '✔️') ? '#10b981' : '#f59e0b';
+            stampEl.style.left = x + 'px'; 
+            stampEl.style.top = y + 'px';
+            
+            // कलर कोडींग
+            let mainColor = (value === '❌') ? 'red' : (value === '✔️') ? '#10b981' : '#f59e0b';
+            
+            // HTML स्ट्रक्चर तयार केले: [स्टॅम्प चिन्ह/मार्क] + [कंसामध्ये प्रश्नाचे नाव]
+            stampEl.innerHTML = `<span style="color: ${mainColor};">${value}</span><span>${label}</span>`;
             wrapperElement.appendChild(stampEl);
         }
 
-        // चालू इनपुट हायलाईट करणे आणि ऑटो-स्क्रोल करणे
         function setCurrentActiveInput(id) {
             currentActiveInputId = id;
             document.querySelectorAll('.q-row').forEach(r => r.style.backgroundColor = 'transparent');
@@ -220,7 +233,6 @@
             }
         }
 
-        // ऑटो-ऍडव्हान्स (Auto-Advance टू नेक्स्ट इनपुट बॉक्स)
         function moveToNextInput() {
             for(let i=0; i<globalStructure.length; i++) {
                 if("input_" + globalStructure[i].id === currentActiveInputId) {
